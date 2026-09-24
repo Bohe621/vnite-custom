@@ -21,6 +21,8 @@ interface ScannerForm {
   targetCollection: string
   normalizeFolderName: boolean
   upscaleScale: number
+  /** Mark every game added by this scanner as NSFW. */
+  nsfw: boolean
 }
 
 interface GlobalScannerSettings {
@@ -95,7 +97,8 @@ export const useGameScannerStore = create<GameScannerStore>((set, get) => ({
     hierarchyLevel: 0,
     targetCollection: 'none',
     normalizeFolderName: false,
-    upscaleScale: 0
+    upscaleScale: 0,
+    nsfw: false
   },
   globalSettings: {
     interval: 0,
@@ -237,7 +240,8 @@ export const useGameScannerStore = create<GameScannerStore>((set, get) => ({
           hierarchyLevel: Math.max(0, Math.floor(inferredLevel)),
           targetCollection: scanner.targetCollection || 'none',
           normalizeFolderName: scanner.normalizeFolderName || false,
-          upscaleScale: scanner.upscaleScale || 0
+          upscaleScale: scanner.upscaleScale || 0,
+          nsfw: scanner.nsfw || false
         }
       })
     } else {
@@ -249,7 +253,8 @@ export const useGameScannerStore = create<GameScannerStore>((set, get) => ({
           hierarchyLevel: 0,
           targetCollection: 'none',
           normalizeFolderName: false,
-          upscaleScale: 0
+          upscaleScale: 0,
+          nsfw: false
         }
       })
     }

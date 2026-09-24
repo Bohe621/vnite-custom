@@ -39,6 +39,7 @@ export async function addGameToDB({
   dirPath,
   gamePath,
   targetCollection,
+  nsfw,
   scanRoot,
   prefetchedMetadata
 }: {
@@ -51,6 +52,8 @@ export async function addGameToDB({
   dirPath?: string
   gamePath?: string
   targetCollection?: string
+  /** Mark the new game as NSFW. Set by scanners configured with the NSFW switch on. */
+  nsfw?: boolean
   scanRoot?: string
   /**
    * Metadata the caller already fetched (the scanner does, to compare identities with games that
@@ -288,6 +291,12 @@ export async function addGameToDB({
     }
     if (folderNameMetadata.version) {
       gameDoc.metadata.version = folderNameMetadata.version
+    }
+
+    // Scanning a directory that is flagged NSFW marks every game it contains, so the library can
+    // blur the covers right away instead of asking the user to tag them one by one.
+    if (nsfw) {
+      gameDoc.apperance.nsfw = true
     }
 
     if (playTime) {

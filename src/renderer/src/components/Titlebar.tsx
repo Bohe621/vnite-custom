@@ -228,6 +228,35 @@ export function Titlebar(): React.JSX.Element {
     </Tooltip>
   )
 
+  //* NSFW Cover Blur Toggle *//
+  // A one-click switch for `appearances.nsfwBlurLevel`: the 3-level value is still what stores the
+  // state (the NSFW filter button keeps its right-click cycle), but here "on" means "blur the
+  // covers" and "off" means "show them", which is what the level boils down to for most people.
+  const isNsfwCoverBlurred = nsfwBlurLevel >= NSFWBlurLevel.BlurImage
+  const nsfwCoverBlurIcon = isNsfwCoverBlurred ? 'icon-[mdi--blur]' : 'icon-[mdi--blur-off]'
+  const nsfwCoverBlurTooltip = isNsfwCoverBlurred
+    ? t('actions.nsfwCoverBlur.on')
+    : t('actions.nsfwCoverBlur.off')
+
+  const renderNsfwCoverBlurControl = (): React.JSX.Element => (
+    <Tooltip>
+      {/* `asChild` — otherwise Radix wraps the button in a button of its own */}
+      <TooltipTrigger asChild>
+        <Button
+          variant="thirdary"
+          size="icon"
+          className={cn('h-[32px] w-[32px]')}
+          onClick={() => {
+            setNsfwBlurLevel(isNsfwCoverBlurred ? NSFWBlurLevel.Off : NSFWBlurLevel.BlurImage)
+          }}
+        >
+          <span className={cn(nsfwCoverBlurIcon, 'w-4 h-4')} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{nsfwCoverBlurTooltip}</TooltipContent>
+    </Tooltip>
+  )
+
   const visibleFilterControls = [
     showLocalGameFilterSwitcherInSidebar ? (
       <div key="local">{renderLocalGameFilterControl()}</div>
@@ -324,6 +353,13 @@ export function Titlebar(): React.JSX.Element {
 
         {/* Right: Function button area */}
         <div className="flex flex-row items-center gap-2 px-3 overflow-hidden shrink-0 h-full">
+          {/* Dev indicator — rendered only in dev builds (import.meta.env.DEV is false in packaged builds) */}
+          {import.meta.env.DEV && (
+            <span className="non-draggable select-none flex items-center px-2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-black leading-none tracking-wide">
+              DEV
+            </span>
+          )}
+
           {/* Timer status indicator */}
           <Tooltip>
             <TooltipTrigger>
@@ -392,10 +428,18 @@ export function Titlebar(): React.JSX.Element {
               /* Display up to two controls directly without a popover */
               visibleFilterControls
             ))}
+
+          {/* NSFW cover blur toggle — right next to the NSFW filter button */}
+          {isLibraryRoute && showNSFWBlurSwitchInSidebar && renderNsfwCoverBlurControl()}
+
           {isRecordRoute &&
             /* Only the NSFW filter applies to record routes, so hide the other filters to avoid confusion */
-            showNSFWBlurSwitchInSidebar &&
-            renderNsfwFilterControl()}
+            showNSFWBlurSwitchInSidebar && (
+              <>
+                {renderNsfwFilterControl()}
+                {renderNsfwCoverBlurControl()}
+              </>
+            )}
 
           {/* Theme switch button */}
           {showThemeSwitchInSidebar && (

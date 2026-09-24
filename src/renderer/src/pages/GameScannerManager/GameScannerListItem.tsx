@@ -25,6 +25,7 @@ interface GameScannerListItemProps {
     path: string
     dataSource: string
     targetCollection: string
+    nsfw?: boolean
   }
   scannerId: string
   onEditClick: () => void
@@ -129,7 +130,15 @@ export const GameScannerListItem: React.FC<GameScannerListItemProps> = ({
 
         <div className="flex-grow min-w-0">
           {/* Scanner path */}
-          <p className="text-sm font-medium truncate">{scanner.path}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">{scanner.path}</p>
+            {/* Games scanned from here are tagged NSFW automatically */}
+            {scanner.nsfw && (
+              <Badge variant="destructive" className="shrink-0">
+                {t('list.item.nsfw')}
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center text-sm text-muted-foreground">
             {/* Data source and scan depth */}
             <span>{t('list.item.dataSource', { name: getDataSourceName() })}</span>
