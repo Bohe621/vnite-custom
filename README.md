@@ -19,6 +19,10 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+> [!NOTE]
+> **This repository is forked from [ximu3/vnite](https://github.com/ximu3/vnite) 4.13.0.**
+> For my own needs, I added multi-language tags and multi-version games. Because the data structure was reworked, it is not compatible with old data; and since it owes a lot to AI with only a tiny bit of my own cleverness, I don't dare submit a PR. If you happen to have the same needs, feel free to give it a try — preferably if you haven't used it before, or if rebuilding your library isn't a hassle, since compatibility with old data can't be guaranteed. Last but not least, my sincere thanks to the authors of the original project for providing such a convenient tool.
+
 Vnite is a versatile game management software designed to provide a unified interface for recording, managing, and synchronizing your gaming journey.
 
 ## ✨ Features
@@ -38,6 +42,15 @@ Vnite is a versatile game management software designed to provide a unified inte
 - Session-based timer, supporting recording for individual files or folders
 - Support for launching games via system links
 - Complete separation of data and program for easy backup and customization
+
+## 🍴  Fork Additions & Improvements
+
+- **Multiple versions per game**: a game can hold several install copies (different versions), each with its own path, launch method and derived paths; launcher presets can also be applied per version.
+- **Multi-language tag lexicon**: a user-editable registry of tag entities that automatically merges the same concept across data sources (by a source-stable id or a cross-language name index), supports multi-language display names, and offers management features such as merge, move and migrate. In plain terms: tags that share a meaning but come from different metadata sources are linked into a single tag, shown in the language you currently have selected. (VNDB tags are translated using some glossaries found online.)
+- **Conflict management**: during a scan, if a new game can be matched to one already in the library but sits in a different directory (moved, re-downloaded or another version), it is recorded in the conflict manager for you to decide whether it is another version. Your decisions are logged, and games already handled are skipped on the next scan. Likewise, newly scraped tags are recorded there too, for you to decide whether to link them to another tag. This manager page exists to serve the two features above.
+- **DLsite folder-name parsing**: improved recognition of the Chinese title and version information from a folder name, depending on your naming convention. For example, `[しなちくかすてぃーら][RJ269335] 夏色泡影 夏色のコワレモノ v1.05` is parsed into original title: 夏色のコワレモノ, translated title: 夏色泡影, version: v1.05.
+- **NSFW enhancements**: a scan directory can be marked as NSFW, so every game added from it is flagged automatically; the top bar offers a one-click toggle for the default cover blur. (Trying to hide it only makes it more conspicuous, honestly...)
+- **Wide-poster showcase layout**: supports switching to a wide (3:2) poster display, with optimized virtualized scrolling and image loading in portrait mode.
 
 ## Development
 
