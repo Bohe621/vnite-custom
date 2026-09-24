@@ -3,6 +3,7 @@ import { getGameLocalStore } from '~/stores/game/gameLocalStoreFactory'
 import type { gameLocalDoc } from '@appTypes/models'
 import type { Get, Paths } from 'type-fest'
 import { isEqual } from 'lodash'
+import { scopePath, useGameVersionScope } from './useGameVersions'
 
 export function useGameLocalState<
   Path extends Paths<gameLocalDoc, { bracketNotation: true }>,
@@ -20,7 +21,12 @@ export function useGameLocalState<
     ]
   : [Get<gameLocalDoc, Path>, (value: Get<gameLocalDoc, Path>) => Promise<void>] {
   const gameLocalStore = getGameLocalStore(gameId)
-  const initialValue = gameLocalStore.getState().getValue(path)
+  // Inside a version scope this resolves to `versions.<id>.<path>`, so the properties dialog
+  // edits the version it has selected rather than the launch version.
+  const versionId = useGameVersionScope()
+  const effectivePath = scopePath(path as string, versionId)
+
+  const initialValue = gameLocalStore.getState().getValueByString(effectivePath)
 
   // Use local state to store the current value
   const [localValue, setLocalValue] = useState<Get<gameLocalDoc, Path>>(initialValue)
@@ -35,7 +41,7 @@ export function useGameLocalState<
   // Subscribe to store changes
   useEffect(() => {
     // Get the initial value and make sure it's synchronized with the store
-    const currentValue = gameLocalStore.getState().getValue(path)
+    const currentValue = gameLocalStore.getState().getValueByString(effectivePath)
     if (!isEqual(currentValue, localValue)) {
       setLocalValue(currentValue)
       if (saveMode) {
@@ -44,7 +50,7 @@ export function useGameLocalState<
     }
 
     const unsubscribe = gameLocalStore.subscribe((state) => {
-      const newValue = state.getValue(path)
+      const newValue = state.getValueByString(effectivePath)
       if (!isEqual(newValue, localValueRef.current)) {
         setLocalValue(newValue)
         if (saveMode) {
@@ -54,7 +60,7 @@ export function useGameLocalState<
     })
 
     return unsubscribe
-  }, [gameId, path, saveMode])
+  }, [gameId, effectivePath, saveMode])
 
   const setValue = useCallback(
     async (newValue: Get<gameLocalDoc, Path>) => {
@@ -67,10 +73,10 @@ export function useGameLocalState<
         // Immediate mode: Update local state first for immediate response
         setLocalValue(newValue)
         // Then update the store
-        return gameLocalStore.getState().setValue(path, newValue)
+        return gameLocalStore.getState().setValueByString(effectivePath, newValue)
       }
     },
-    [saveMode, localValue, gameLocalStore, path]
+    [saveMode, localValue, gameLocalStore, effectivePath]
   )
 
   const save = useCallback(async () => {
@@ -82,11 +88,11 @@ export function useGameLocalState<
     if (isEqual(currentValue, originalValue)) return
 
     // Apply the local changes to the store
-    await gameLocalStore.getState().setValue(path, currentValue)
+    await gameLocalStore.getState().setValueByString(effectivePath, currentValue)
 
     // Update original value to match the saved value
     setOriginalValue(currentValue)
-  }, [saveMode, path, originalValue, gameLocalStore])
+  }, [saveMode, effectivePath, originalValue, gameLocalStore])
 
   const setValueAndSave = useCallback(
     async (newValue: Get<gameLocalDoc, Path>) => {
@@ -96,11 +102,11 @@ export function useGameLocalState<
       setLocalValue(newValue)
 
       // Save directly to store
-      await gameLocalStore.getState().setValue(path, newValue)
+      await gameLocalStore.getState().setValueByString(effectivePath, newValue)
 
       setOriginalValue(newValue)
     },
-    [localValue, gameLocalStore, path, saveMode]
+    [localValue, gameLocalStore, effectivePath, saveMode]
   )
 
   if (saveMode) {

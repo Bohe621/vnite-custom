@@ -11,7 +11,7 @@ import {
   GameTagsList,
   type GameImageUpscaleOptions
 } from '@appTypes/utils'
-import { generateUUID } from '@appUtils'
+import { generateUUID, normalizeGameLocalDoc } from '@appUtils'
 import log from 'electron-log/main'
 import path from 'path'
 import { ConfigDBManager, GameDBManager } from '~/core/database'
@@ -26,6 +26,7 @@ import { launcherPreset } from '~/features/launcher'
 import { scraperManager } from '~/features/scraper'
 import { cacheDescriptionImages } from '~/features/scraper/services/descriptionImageCache'
 import { getGameFolders, selectPathDialog, inferRootPath } from '~/utils'
+import { DlsiteFolderNameMetadata, parseDlsiteFolderName } from './dlsiteFolderName'
 
 export async function addGameToDB({
   dataSource,
@@ -37,7 +38,8 @@ export async function addGameToDB({
   dirPath,
   gamePath,
   targetCollection,
-  scanRoot
+  scanRoot,
+  prefetchedMetadata
 }: {
   dataSource: string
   dataSourceId: string
@@ -49,6 +51,11 @@ export async function addGameToDB({
   gamePath?: string
   targetCollection?: string
   scanRoot?: string
+  /**
+   * Metadata the caller already fetched (the scanner does, to compare identities with games that
+   * are already in the library). Passing it saves a second round trip to the provider.
+   */
+  prefetchedMetadata?: GameMetadata
 }): Promise<string> {
   try {
     const dbId = generateUUID()
@@ -58,10 +65,12 @@ export async function addGameToDB({
     const providerCapabilities = providerInfo?.capabilities || []
 
     // Get the base metadata first
-    const baseMetadata = await scraperManager.getGameMetadata(dataSource, {
-      type: 'id',
-      value: dataSourceId
-    })
+    const baseMetadata =
+      prefetchedMetadata ??
+      (await scraperManager.getGameMetadata(dataSource, {
+        type: 'id',
+        value: dataSourceId
+      }))
 
     // Create a copy of the base metadata to avoid modifying the original
     const metadata = JSON.parse(JSON.stringify(baseMetadata)) as GameMetadata
@@ -261,6 +270,17 @@ export async function addGameToDB({
       [`${dataSource}Id`]: dataSourceId
     }
 
+    // The DLsite folder name carries the Chinese title and the version of the copy on disk.
+    // Neither can come from the scraper: DLsite returns the Japanese title for both `name` and
+    // `originalName`, and it has no concept of a version number at all.
+    const folderNameMetadata = await resolveFolderNameMetadata(dirPath)
+    if (folderNameMetadata.localizedName) {
+      gameDoc.metadata.name = folderNameMetadata.localizedName
+    }
+    if (folderNameMetadata.version) {
+      gameDoc.metadata.version = folderNameMetadata.version
+    }
+
     if (playTime) {
       gameDoc.record.playTime = playTime
     }
@@ -271,6 +291,10 @@ export async function addGameToDB({
     gameLocalDoc.utils.markPath = dirPath ?? ''
     gameLocalDoc.utils.rootPath = inferRootPath(gameLocalDoc.utils.markPath, scanRoot)
     gameLocalDoc.path.gamePath = gamePath ?? ''
+    // Seed the first version so a brand new game is multi-version ready from the start.
+    normalizeGameLocalDoc(gameLocalDoc, {
+      defaultVersionName: (gameDoc.metadata.version ?? '').trim()
+    })
 
     // Calculate storage size if enabled
     const autoCalculateSize = await isAutoCalculateStorageSizeEnabled()
@@ -462,6 +486,22 @@ export async function addGameToDB({
   }
 }
 
+/**
+ * Read the Chinese title and the version number out of a DLsite-style folder name.
+ *
+ * Returns nothing unless "detect DLsite ID in folder name" is enabled: that switch already means
+ * "the folder name follows the DLsite convention", which is exactly the precondition for parsing
+ * the rest of it. Folders without a DLsite id are left alone as well.
+ */
+async function resolveFolderNameMetadata(dirPath?: string): Promise<DlsiteFolderNameMetadata> {
+  if (!dirPath) return { localizedName: null, version: null }
+
+  const findIdInName = await ConfigDBManager.getConfigValue('game.scraper.dlsite.findIdInName')
+  if (!findIdInName) return { localizedName: null, version: null }
+
+  return parseDlsiteFolderName(path.basename(dirPath))
+}
+
 export async function addGameToDBWithoutMetadata(
   dirPath: string,
   gamePath?: string
@@ -484,6 +524,8 @@ export async function addGameToDBWithoutMetadata(
     gameLocalDoc.path.gamePath = gamePath ?? ''
     gameLocalDoc.utils.markPath = dirPath ?? ''
     gameLocalDoc.utils.rootPath = inferRootPath(gameLocalDoc.utils.markPath)
+    // Seed the first version so a brand new game is multi-version ready from the start.
+    normalizeGameLocalDoc(gameLocalDoc, { defaultVersionName: '' })
 
     // Calculate storage size if enabled
     const autoCalculateSize = await isAutoCalculateStorageSizeEnabled()

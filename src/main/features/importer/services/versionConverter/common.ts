@@ -13,6 +13,8 @@ import * as path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { ConfigDBManager, GameDBManager } from '~/core/database'
 import { stopSync } from '~/features/database'
+import { getTagLanguage } from '~/features/system/services/i18n'
+import { TagLexiconManager } from '~/features/tagLexicon/services'
 import { getAppTempPath } from '~/features/system'
 import { unzipFile, zipFolder } from '~/utils'
 
@@ -244,6 +246,32 @@ async function convertGames(basePath: string): Promise<void> {
   console.log(`Successful conversion of ${gameIds.length} games`)
 }
 
+/**
+ * 把 v2 导入进来的标签过一遍词库，落成 `@tag:...` key。
+ *
+ * v2 的 `metadata.json` 里存的是**标签原文**，以前这里是原样透传 —— 于是导入来的游戏
+ * 永远是无 key 的老数据：改译名、按语言显示、跨源归并全都落不到它头上，
+ * 表现就是「同一个标签，扫描进来的显示正常，导入进来的永远显示原文」。
+ *
+ * 老标签不知道来自哪个源、也没有源内 id，所以按 `user` + 当前界面语言登记
+ * （与「详情页手写标签」同一条路）：认得出的（各语言显示名或原始串命中）归并到已有实体，
+ * 认不出的铸一条自己的。词库出问题不能让整个导入失败，所以兜住异常退回原文。
+ */
+async function normalizeImportedTags(tags?: string[]): Promise<string[]> {
+  const values = (tags ?? [])
+    .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+    .filter((tag) => tag !== '')
+  if (values.length === 0) return []
+
+  try {
+    const keys = await TagLexiconManager.getInstance().ensureTags(values, 'user', getTagLanguage())
+    return [...new Set(keys)]
+  } catch (error) {
+    console.error('[Importer] Failed to normalize imported tags:', error)
+    return [...new Set(values)]
+  }
+}
+
 async function convertGame(gameId: string, gamePath: string): Promise<void> {
   console.log(`Converting the game: ${gameId}`)
 
@@ -264,13 +292,15 @@ async function convertGame(gameId: string, gamePath: string): Promise<void> {
         name: metadata.name || '',
         originalName: metadata.originalName || '',
         sortName: '',
+        // The v2 schema had no version field, so a converted game starts out blank.
+        version: '',
         releaseDate: metadata.releaseDate || '',
         description: metadata.description || '',
         developers: metadata.developers || [],
         platforms: metadata.platforms || [],
         publishers: metadata.publishers || [],
         genres: metadata.genres || [],
-        tags: metadata.tags || [],
+        tags: await normalizeImportedTags(metadata.tags),
         relatedSites: metadata.relatedSites || [],
         steamId: metadata.steamId || '',
         vndbId: metadata.vndbId || '',
@@ -598,7 +628,8 @@ async function convertConfig(basePath: string): Promise<void> {
         sort: {
           by: mapSortField(v2Config.others.showcase.sort.by),
           order: v2Config.others.showcase.sort.order
-        }
+        },
+        posterShape: DEFAULT_CONFIG_VALUES.game.showcase.posterShape
       },
       gameList: {
         sort: {
@@ -617,7 +648,8 @@ async function convertConfig(basePath: string): Promise<void> {
           { type: 'gameName' },
           { type: 'sortInfo' },
           { type: 'localFlag', reserveSpace: false }
-        ]
+        ],
+        displayMode: DEFAULT_CONFIG_VALUES.game.gameList.displayMode
       },
       gameHeader: {
         showOriginalName: v2Config.appearances.gameHeader.showOriginalNameInGameHeader

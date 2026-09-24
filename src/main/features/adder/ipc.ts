@@ -2,14 +2,23 @@ import {
   GameImageUpscaleOptions,
   GameMetadataField,
   GameMetadataUpdateMode,
-  GameMetadataUpdateOptions
+  GameMetadataUpdateOptions,
+  VersionReviewSavePayload
 } from '@appTypes/utils'
 import { ipcManager } from '~/core/ipc'
 import {
   addGameToDB,
   addGameToDBWithoutMetadata,
   batchUpdateGameMetadata,
+  checkVersionPaths,
+  clearVersionRecords,
   getBatchGameAdderData,
+  getVersionRecord,
+  getVersionReview,
+  listVersionReviews,
+  refreshVersionReview,
+  removeVersionRecord,
+  saveVersionReview,
   updateGameMetadata
 } from './services'
 
@@ -129,4 +138,38 @@ export function setupAdderIPC(): void {
       })
     }
   )
+
+  // Version-conflict workbench: scanned folders + duplicate library entries, edited per game.
+  ipcManager.handle('version-review:list', async () => {
+    return await listVersionReviews()
+  })
+
+  ipcManager.handle('version-review:get', async (_, gameId: string) => {
+    return await getVersionReview(gameId)
+  })
+
+  ipcManager.handle('version-review:save', async (_, payload: VersionReviewSavePayload) => {
+    return await saveVersionReview(payload)
+  })
+
+  ipcManager.handle('version-review:check-paths', async (_, paths: string[]) => {
+    return await checkVersionPaths(paths)
+  })
+
+  ipcManager.handle('version-review:refresh', async (_, gameId: string) => {
+    return await refreshVersionReview(gameId)
+  })
+
+  // Processing log: what the workbench did to a game, shown in its properties dialog.
+  ipcManager.handle('version-review:get-record', async (_, gameId: string) => {
+    return await getVersionRecord(gameId)
+  })
+
+  ipcManager.handle('version-review:remove-record', async (_, gameId: string, entryId: string) => {
+    return await removeVersionRecord(gameId, entryId)
+  })
+
+  ipcManager.handle('version-review:clear-records', async (_, gameId: string) => {
+    return await clearVersionRecords(gameId)
+  })
 }

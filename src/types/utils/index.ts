@@ -1,4 +1,6 @@
 export * from './common'
+export * from './gameConflict'
+export * from './versionReview'
 export * from './importer'
 export * from './scraper'
 export * from './upscaler'

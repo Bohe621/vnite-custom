@@ -14,10 +14,34 @@ import {
   DEFAULT_GAME_COLLECTION_VALUES,
   SortConfig
 } from '@appTypes/models'
-import { getValueByPath } from '@appUtils'
+import { getValueByPath, versionDirectory } from '@appUtils'
 import type { Get, Paths } from 'type-fest'
 import log from 'electron-log/main'
 import { eventBus } from '~/core/events'
+
+/**
+ * Directories one library entry claims on disk.
+ *
+ * The top-level `path`/`utils` fields mirror the *active* version only, but an entry can own
+ * several folders: folding duplicate entries into one (the version-conflict workbench) gives a
+ * single entry one directory per version. A lookup that stopped at the mirror therefore reported a
+ * game's own other-version folders as brand new folders every time the scanner walked over them.
+ */
+function ownedDirectories(game: gameLocalDoc): string[] {
+  const gamePath = game.path?.gamePath
+  const candidates = [
+    // Same precedence the path lookup used before, so existing behaviour is unchanged.
+    game.utils?.rootPath || (gamePath ? path.dirname(gamePath) : '') || game.utils?.markPath,
+    game.utils?.markPath,
+    gamePath
+  ]
+
+  for (const version of Object.values(game.versions ?? {})) {
+    candidates.push(versionDirectory(version), version?.path?.gamePath, version?.utils?.rootPath)
+  }
+
+  return candidates.filter((value): value is string => Boolean(value) && value.trim().length > 0)
+}
 
 export class GameDBManager {
   private static readonly DB_NAME = 'game'
@@ -241,17 +265,13 @@ export class GameDBManager {
     try {
       const games = await this.getAllGamesLocal()
 
-      const gameArray = Object.values(games)
-      const results = await Promise.all(
-        gameArray.map(async (game) => {
-          const gamePath = game.path?.gamePath
-          const rootPath =
-            game.utils?.rootPath || (gamePath ? path.dirname(gamePath) : '') || game.utils?.markPath
-          return rootPath && isPathWithinRoot(inputPath, rootPath) ? game._id : null
-        })
-      )
+      for (const game of Object.values(games)) {
+        if (ownedDirectories(game).some((directory) => isPathWithinRoot(inputPath, directory))) {
+          return game._id
+        }
+      }
 
-      return results.find((id): id is string => id !== null) || null
+      return null
     } catch (error) {
       log.error('[GameDB] Error finding existing game ID by path:', error)
       throw error

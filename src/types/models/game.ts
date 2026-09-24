@@ -14,6 +14,11 @@ export interface gameDoc {
     name: string
     originalName: string
     sortName: string
+    /**
+     * Free-form version of this copy of the game, e.g. `1.02` or `v2 (汉化)`. Edited by hand in
+     * the information dialog, never filled by a scraper: the data sources have no such field.
+     */
+    version: string
     releaseDate: string
     description: string
     developers: string[]
@@ -114,43 +119,90 @@ export interface gameLocalDocs {
   [gameId: string]: gameLocalDoc
 }
 
+export type GameMonitorMode = 'file' | 'folder' | 'process'
+
+export type GameLauncherMode = 'file' | 'url' | 'script'
+
+export interface GameLocalPathConfig {
+  gamePath: string
+  savePaths: string[]
+  screenshotPath?: string
+}
+
+export interface GameLocalFileConfig {
+  path: string
+  args: string[]
+  monitorMode: GameMonitorMode
+  monitorPath: string
+}
+
+export interface GameLocalUrlConfig {
+  url: string
+  browserPath: string
+  monitorMode: GameMonitorMode
+  monitorPath: string
+}
+
+export interface GameLocalScriptConfig {
+  workingDirectory: string
+  command: string[]
+  monitorMode: GameMonitorMode
+  monitorPath: string
+}
+
+export interface GameLocalLauncherConfig {
+  mode: GameLauncherMode
+  fileConfig: GameLocalFileConfig
+  urlConfig: GameLocalUrlConfig
+  scriptConfig: GameLocalScriptConfig
+  useMagpie: boolean
+}
+
+export interface GameLocalUtilsConfig {
+  markPath: string
+  rootPath: string
+}
+
+/**
+ * One install of a game. A game may exist in several copies (original / translated /
+ * different release), each with its own executable, save locations and launcher setup.
+ *
+ * 一个版本块：该版本自己的路径、启动器与派生路径，互相独立。
+ */
+export interface GameLocalVersion {
+  id: string
+  name: string
+  path: GameLocalPathConfig
+  launcher: GameLocalLauncherConfig
+  utils: GameLocalUtilsConfig
+}
+
+export interface GameLocalVersionMap {
+  [versionId: string]: GameLocalVersion
+}
+
 export interface gameLocalDoc {
   _id: string
-  path: {
-    gamePath: string
-    savePaths: string[]
-    screenshotPath?: string
-  }
-  launcher: {
-    mode: 'file' | 'url' | 'script'
-    fileConfig: {
-      path: string
-      args: string[]
-      monitorMode: 'file' | 'folder' | 'process'
-      monitorPath: string
-    }
-    urlConfig: {
-      url: string
-      browserPath: string
-      monitorMode: 'file' | 'folder' | 'process'
-      monitorPath: string
-    }
-    scriptConfig: {
-      workingDirectory: string
-      command: string[]
-      monitorMode: 'file' | 'folder' | 'process'
-      monitorPath: string
-    }
-    useMagpie: boolean
-  }
-  utils: {
-    markPath: string
-    rootPath: string
-  }
+  /**
+   * The version used to launch the game — picked on the game detail page.
+   *
+   * The top-level `path` / `launcher` / `utils` below are always a mirror of
+   * `versions[currentVersionId]`. Main-process consumers (launcher, monitor, save
+   * scanning, storage size, rootPath inference) keep reading the top level, so they
+   * need no knowledge of versions at all. Keep the mirror in sync via
+   * `applyActiveVersionMirror`.
+   */
+  currentVersionId: string
+  versions: GameLocalVersionMap
+  path: GameLocalPathConfig
+  launcher: GameLocalLauncherConfig
+  utils: GameLocalUtilsConfig
 }
 
 export const DEFAULT_GAME_LOCAL_VALUES: Readonly<gameLocalDoc> = {
   _id: '',
+  currentVersionId: '',
+  versions: {},
   path: {
     gamePath: '',
     savePaths: [],
@@ -204,6 +256,7 @@ export const DEFAULT_GAME_VALUES: Readonly<gameDoc> = {
     name: '',
     originalName: '',
     sortName: '',
+    version: '',
     releaseDate: '',
     description: '',
     developers: [] as string[],
