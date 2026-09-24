@@ -112,5 +112,130 @@
       "gameIsBeingAdded": "Game is already being added",
       "gameAlreadyAdded": "Game already added"
     }
+  },
+  "versionConflict": {
+    "title": "Version Conflicts",
+    "description": "These games have version data to sort out: library entries that share one product id, or scanned folders that could not be placed automatically. Pick a game to edit all of its versions.",
+    "empty": "Nothing to resolve",
+    "loading": "Loading…",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "mergeWarning": "On save these duplicate entries are deleted; their directories stay as versions of this game:",
+    "reason": {
+      "duplicates": "{{entries}} duplicate entry(s)",
+      "stale": "{{folders}} missing folder(s)",
+      "incoming": "{{folders}} folder(s) to place",
+      "versionCount": "{{versions}} version(s) in total"
+    },
+    "conflictTags": {
+      "library": "Library conflict",
+      "directory": "Folder conflict",
+      "version": "Version conflict"
+    },
+    "versions": {
+      "unnamed": "Unnamed version",
+      "namePlaceholder": "Version name",
+      "pathPlaceholder": "Game directory",
+      "selectFolder": "Choose folder",
+      "openInExplorer": "Show in file explorer",
+      "refresh": "Re-check the folders",
+      "fromEntry": "from \"{{name}}\"",
+      "remove": "Delete this version",
+      "incomingBadge": "New folder",
+      "incomingHint": "Becomes a new version",
+      "ignoreIncoming": "Ignore",
+      "dropped": "{{folders}} folder(s) ignored",
+      "restore": "Restore",
+      "empty": "This game has no versions left to edit",
+      "missingWarning": "{{folders}} directory(ies) are missing — those versions cannot be launched",
+      "duplicateWarning": "Several versions point at the same directory — separate them first",
+      "ignoreDropped": "Add ignored folders to the scanner exclude list so scans stop reporting them",
+      "status": {
+        "ok": "Directory is valid",
+        "missing": "Directory missing",
+        "duplicate": "Duplicate directory",
+        "duplicateWith": "Same as \"{{name}}\""
+      }
+    },
+    "mergeConfirm": {
+      "title": "Merge the duplicate entries?",
+      "description": "One entry is kept and the other {{entries}} are deleted: {{names}}. Their launcher settings become versions of the kept entry. This cannot be undone."
+    },
+    "notification": {
+      "title": "Version conflicts found",
+      "description": "{{total}} game(s) have version data to confirm.",
+      "review": "Review",
+      "loadFailed": "Failed to load version data",
+      "saveFailed": "Failed to save",
+      "partialSave": "Versions were saved, but cleaning up a duplicate entry failed",
+      "saved": "Saved",
+      "refreshed": "Re-checked the conflict folders",
+      "refreshedPruned": "Re-checked: {{count}} dead item(s) cleaned up",
+      "prunedEntries": "Dead duplicate entries: {{names}}",
+      "prunedFolders": "Missing folders: {{names}}",
+      "refreshFailed": "Failed to re-check the conflict folders"
+    }
+  },
+  "conflictCenter": {
+    "title": "Conflicts",
+    "description": "Everything a scan can leave for you to decide lands here: the version data of your library (entries sharing a product id, folders that could not be placed) and the tag names that collided while ingesting. Pick a game to edit all of its versions.",
+    "tabs": {
+      "version": "Game versions",
+      "tag": "Tags"
+    }
+  },
+  "tagConflict": {
+    "tabs": {
+      "pending": "To resolve {{count}}",
+      "ignored": "Ignored {{count}}"
+    },
+    "pendingHint": "Ingestion no longer merges by text, so two entries sharing a name are listed here for you to decide whether they mean the same thing.",
+    "ignoredHint": "These were left as they are — the same spelling will not ask again. Accepting either side brings the decision back.",
+    "moveVsMerge": "\"Merge…\" means the two entries are really the same concept (or this one should not exist) — pick a target and fold them into one; when both sides have a name in the same language you confirm per language which to keep. \"Fix index\" means this source points at the wrong entry — only the index moves, both entries stay.",
+    "empty": "No tag conflicts to resolve",
+    "emptyIgnored": "No ignored tag conflicts",
+    "kind": {
+      "duplicate": "Possibly the same",
+      "name": "Different translation"
+    },
+    "fromSource": "from {{provider}}",
+    "ignoredBadge": "Ignored",
+    "origin": {
+      "builtin": "built-in name",
+      "user": "custom name",
+      "fetched": "collected by scans"
+    },
+    "duplicate": {
+      "summary": "Both entries are called \"{{name}}\" in {{lang}}"
+    },
+    "name": {
+      "current": "Current name",
+      "incoming": "Spelling from {{provider}}"
+    },
+    "action": {
+      "merge": "Merge…",
+      "keepBoth": "Keep both",
+      "acceptName": "Use the fetched name",
+      "keepCurrent": "Keep the current name",
+      "moveSource": "Fix index…"
+    },
+    "notification": {
+      "resolved": "Resolved",
+      "resolveFailed": "Failed to resolve the conflict"
+    },
+    "compare": {
+      "minted": "New ({{provider}})",
+      "existing": "Existing entry (built-in / other source)",
+      "evidence": "Matched \"{{a}}\" ↔ \"{{b}}\"",
+      "verdict": {
+        "same": "Identical spelling → likely the same concept",
+        "alias": "Matches the other side's alias / another language's spelling → likely the same concept",
+        "similar": "English names are near-identical → likely the same concept",
+        "different": "Spellings do not line up → possibly a different concept",
+        "unknown": "Nothing comparable to check"
+      },
+      "noComparableHint": "Apart from the conflicting language these two share no language, so there is nothing to compare. Scraping another locale of that source fills it in."
+    }
   }
 }

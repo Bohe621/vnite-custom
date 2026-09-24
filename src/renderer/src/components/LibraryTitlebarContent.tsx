@@ -5,6 +5,7 @@ import { Button } from '~/components/ui/button'
 import { ClearableInput } from '~/components/ui/input'
 import { Nav } from '~/components/ui/nav'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
+import { useConfigState } from '~/hooks'
 import { cn } from '~/utils'
 import { Filter } from './Librarybar/Filter'
 import { useFilterStore } from './Librarybar/Filter/store'
@@ -23,6 +24,14 @@ export function LibraryTitlebarContent(): React.JSX.Element {
   const toggleSortMenu = (): void => {
     setIsSortMenuOpen(!isSortMenuOpen)
   }
+
+  // Game list display mode: compact rows or poster grid
+  const [displayMode, setDisplayMode] = useConfigState('game.gameList.displayMode')
+  const isGrid = displayMode === 'grid'
+
+  // Showcase poster shape: portrait 2:3 covers or wide 3:2 covers
+  const [posterShape, setPosterShape] = useConfigState('game.showcase.posterShape')
+  const isWidePoster = posterShape === 'wide'
 
   return (
     <div className="flex flex-row items-center justify-center gap-2">
@@ -104,6 +113,56 @@ export function LibraryTitlebarContent(): React.JSX.Element {
           <span className="icon-[mdi--sort] w-4 h-4"></span>
         </Button>
       </SortMenu>
+
+      {/* Display Mode Toggle Button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={() => setDisplayMode(isGrid ? 'list' : 'grid')}
+            variant="thirdary"
+            size="icon"
+            className="h-[32px] w-[32px]"
+          >
+            <span
+              className={cn(
+                isGrid
+                  ? 'icon-[mdi--view-list-outline] w-4 h-4'
+                  : 'icon-[mdi--view-grid-outline] w-4 h-4'
+              )}
+            ></span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {isGrid
+            ? t('librarybar.displayMode.switchToList')
+            : t('librarybar.displayMode.switchToGrid')}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Showcase Poster Shape Toggle Button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={() => setPosterShape(isWidePoster ? 'portrait' : 'wide')}
+            variant="thirdary"
+            size="icon"
+            className="h-[32px] w-[32px]"
+          >
+            <span
+              className={cn(
+                isWidePoster
+                  ? 'icon-[mdi--card-outline] w-4 h-4'
+                  : 'icon-[mdi--panorama-horizontal-outline] w-4 h-4'
+              )}
+            ></span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {isWidePoster
+            ? t('librarybar.posterShape.switchToPortrait')
+            : t('librarybar.posterShape.switchToWide')}
+        </TooltipContent>
+      </Tooltip>
     </div>
   )
 }

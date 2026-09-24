@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import { useGameCollectionStore } from '~/stores'
 import { Switch } from '~/components/ui/switch'
 import { UpscaleSelectRow } from '~/components/utils/UpscaleSelect'
+import { CollectionCombobox, NO_COLLECTION_ID } from '~/components/utils/CollectionCombobox'
 
 interface EditScannerDialogProps {
   isOpen: boolean
@@ -45,14 +46,12 @@ export const EditScannerDialog: React.FC<EditScannerDialogProps> = ({
     useGameScannerStore()
 
   const checkCollectionExists = useGameCollectionStore((state) => state.checkCollectionExists)
-  const getAllCollections = useGameCollectionStore((state) => state.getAllCollections)
-  const collections = getAllCollections()
 
   useEffect(() => {
     // Check if the target collection exists
     if (formState.targetCollection && !checkCollectionExists(formState.targetCollection)) {
       // Reset to 'none' if it doesn't exist
-      updateFormState({ targetCollection: 'none' })
+      updateFormState({ targetCollection: NO_COLLECTION_ID })
     }
   }, [formState.targetCollection, checkCollectionExists, updateFormState])
 
@@ -218,22 +217,11 @@ export const EditScannerDialog: React.FC<EditScannerDialogProps> = ({
           <div className={cn('whitespace-nowrap select-none justify-self-start')}>
             {t('editScanner.targetCollection')}
           </div>
-          <Select
+          <CollectionCombobox
             value={formState.targetCollection}
             onValueChange={(value) => updateFormState({ targetCollection: value })}
-          >
-            <SelectTrigger className={cn('text-sm w-full')}>
-              <SelectValue placeholder={t('editScanner.targetCollectionPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">{t('editScanner.targetCollectionNone')}</SelectItem>
-              {collections.map((collection) => (
-                <SelectItem key={collection.id} value={collection.id}>
-                  {collection.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className={cn('text-sm')}
+          />
           {/* Normalize Folder Name */}
           <div className={cn('whitespace-nowrap select-none justify-self-start')}>
             {t('editScanner.normalizeFolderName')}
@@ -244,6 +232,19 @@ export const EditScannerDialog: React.FC<EditScannerDialogProps> = ({
               updateFormState({ normalizeFolderName: Boolean(checked) })
             }
           ></Switch>
+          {/* Mark scanned games as NSFW */}
+          <div className={cn('whitespace-nowrap select-none justify-self-start')}>
+            {t('editScanner.nsfw')}
+          </div>
+          <div className={cn('flex flex-col gap-1')}>
+            <Switch
+              checked={formState.nsfw}
+              onCheckedChange={(checked) => updateFormState({ nsfw: Boolean(checked) })}
+            ></Switch>
+            <div className={cn('text-xs text-muted-foreground select-none')}>
+              {t('editScanner.nsfwHelp')}
+            </div>
+          </div>
           {/* Upscale Scale */}
           <UpscaleSelectRow
             value={formState.upscaleScale || 0}

@@ -15,6 +15,10 @@ import {
   isPathWithinRoot
 } from '~/utils'
 import { addGameToDB } from './adder'
+import { recordPathConflict } from './pathConflicts'
+import { resolveFolderIdentity } from './pathIdentity'
+import { appendVersionLog } from './versionLog'
+import { pushVersionReviews } from './versionReview'
 
 // Scanner configuration type
 interface ScannerConfig {
@@ -27,6 +31,8 @@ interface ScannerConfig {
   depth?: number
   deepth?: number
   normalizeFolderName?: boolean
+  /** Mark every game this scanner adds as NSFW. Absent in older configs (= false). */
+  nsfw?: boolean
 }
 
 // Global scanner configuration
@@ -53,6 +59,8 @@ export class GameScanner extends EventEmitter {
   private lastScanTime: number = 0
   private autoStartPeriodicScan: boolean = true
   private countedGameIds: Set<string> = new Set()
+  /** Set when a scan records a new path conflict, so the renderer is told once at the end. */
+  private pathConflictDirty: boolean = false
 
   constructor() {
     super()
@@ -233,6 +241,8 @@ export class GameScanner extends EventEmitter {
         // Update last scan time
         this.lastScanTime = Date.now()
       }
+
+      await this.notifyPathConflicts()
     } catch (error) {
       this.scanProgress.status = 'error'
       this.scanProgress.errorMessage = error instanceof Error ? error.message : String(error)
@@ -307,6 +317,8 @@ export class GameScanner extends EventEmitter {
         this.scanProgress.status = 'completed'
         ipcManager.send('scanner:scan-completed', { ...this.scanProgress })
       }
+
+      await this.notifyPathConflicts()
     } catch (error) {
       this.scanProgress.status = 'error'
       this.scanProgress.errorMessage = error instanceof Error ? error.message : String(error)
@@ -447,71 +459,105 @@ export class GameScanner extends EventEmitter {
 
       if (existingGameId) {
         // Already exists — only count once per unique game ID
-        if (!this.countedGameIds.has(existingGameId)) {
-          this.countedGameIds.add(existingGameId)
-          scannerProgress.scannedGames++
-          this.scanProgress.scannedGames++
-        }
-      } else {
-        let searchName = folder.name
-        const rootPath = inferRootPath(folder.dirPath)
-        if (rootPath && rootPath !== folder.dirPath) {
-          searchName = path.basename(rootPath)
-        }
-        if (normalizeFolderName) {
-          searchName = this.normalizeFolderName(searchName)
-        }
-
-        // Use folder name as game name for search
-        const gameResults = await scraperManager.searchGames(dataSource, searchName, folder.dirPath)
-
-        if (gameResults && gameResults.length > 0) {
-          // Use the first result as a match
-          const match = gameResults[0]
-
-          // Get the target collection from scanner config
-          const scannerList = await ConfigDBManager.getConfigLocalValue('game.scanner.list')
-          let targetCollection = scannerList[scannerId]?.targetCollection || undefined
-          if (targetCollection === 'none') {
-            targetCollection = undefined // Convert 'none' to undefined
-          }
-          if (targetCollection) {
-            // Validate target collection
-            const isTargetCollectionValid =
-              await GameDBManager.checkCollectionExists(targetCollection)
-            if (!isTargetCollectionValid) {
-              targetCollection = undefined
-              ConfigDBManager.setConfigLocalValue('game.scanner.list', {
-                ...scannerList,
-                [scannerId]: {
-                  ...scannerList[scannerId],
-                  targetCollection: ''
-                }
-              })
-            }
-          }
-
-          const upscaleScale = scannerList[scannerId]?.upscaleScale ?? 0
-
-          const dbId = await addGameToDB({
-            dataSource,
-            dataSourceId: match.id,
-            dirPath: folder.dirPath,
-            upscaleEnabled: upscaleScale > 0,
-            upscaleOptionsOverride: upscaleScale > 0 ? { scale: upscaleScale } : undefined,
-            targetCollection,
-            scanRoot: this.currentScannerConfig?.path
-          })
-          this.countedGameIds.add(dbId)
-          await this.cleanDuplicateFailedFolders(dbId, scannerProgress)
-        } else {
-          // If no match is found
-          throw new Error(`No games found matching "${folder.name}"`)
-        }
-        // Count the newly added game
-        scannerProgress.scannedGames++
-        this.scanProgress.scannedGames++
+        this.countExistingGame(existingGameId, scannerProgress)
+        return
       }
+
+      let searchName = folder.name
+      const rootPath = inferRootPath(folder.dirPath)
+      if (rootPath && rootPath !== folder.dirPath) {
+        searchName = path.basename(rootPath)
+      }
+      if (normalizeFolderName) {
+        searchName = this.normalizeFolderName(searchName)
+      }
+
+      // Use folder name as game name for search
+      const gameResults = await scraperManager.searchGames(dataSource, searchName, folder.dirPath)
+
+      if (!gameResults || gameResults.length === 0) {
+        // If no match is found
+        throw new Error(`No games found matching "${folder.name}"`)
+      }
+
+      // Use the first result as a match
+      const match = gameResults[0]
+
+      // No known game claims this folder by path, but it may still be the same game living in
+      // another directory (moved, re-downloaded, or another version). Identify it by scraped
+      // metadata before creating a duplicate entry for it.
+      const identity = await resolveFolderIdentity({
+        dataSource,
+        dataSourceId: match.id,
+        dirPath: folder.dirPath
+      })
+
+      if (identity.kind !== 'new' && identity.gameId) {
+        if (identity.kind === 'conflict' && identity.conflict) {
+          // Two directories claim the same game and neither is obviously stale: let the user pick.
+          await recordPathConflict(identity.conflict)
+          this.pathConflictDirty = true
+        } else if (identity.kind === 'adopted') {
+          // The folder took over a version on its own; write it down so the game's records show it.
+          await appendVersionLog([
+            {
+              gameId: identity.gameId,
+              action: 'adopt-folder',
+              directory: folder.dirPath,
+              versionName: identity.versionName
+            }
+          ])
+        }
+        // Either the folder was adopted into the existing game, or it is waiting on a decision.
+        // Both mean "this game is already in the library".
+        this.countExistingGame(identity.gameId, scannerProgress)
+        return
+      }
+
+      // Get the target collection from scanner config
+      const scannerList = await ConfigDBManager.getConfigLocalValue('game.scanner.list')
+      let targetCollection = scannerList[scannerId]?.targetCollection || undefined
+      if (targetCollection === 'none') {
+        targetCollection = undefined // Convert 'none' to undefined
+      }
+      if (targetCollection) {
+        // Validate target collection
+        const isTargetCollectionValid = await GameDBManager.checkCollectionExists(targetCollection)
+        if (!isTargetCollectionValid) {
+          targetCollection = undefined
+          ConfigDBManager.setConfigLocalValue('game.scanner.list', {
+            ...scannerList,
+            [scannerId]: {
+              ...scannerList[scannerId],
+              targetCollection: ''
+            }
+          })
+        }
+      }
+
+      const upscaleScale = scannerList[scannerId]?.upscaleScale ?? 0
+      // The scanner's own NSFW flag travels with the game into the database, where the
+      // library uses it to blur the cover and to power the NSFW filters.
+      const markAsNsfw = scannerList[scannerId]?.nsfw ?? false
+
+      const dbId = await addGameToDB({
+        dataSource,
+        dataSourceId: match.id,
+        dirPath: folder.dirPath,
+        upscaleEnabled: upscaleScale > 0,
+        upscaleOptionsOverride: upscaleScale > 0 ? { scale: upscaleScale } : undefined,
+        targetCollection,
+        nsfw: markAsNsfw,
+        scanRoot: this.currentScannerConfig?.path,
+        // Identity detection already fetched this; reuse it instead of asking the provider twice.
+        prefetchedMetadata: identity.metadata
+      })
+      this.countedGameIds.add(dbId)
+      await this.cleanDuplicateFailedFolders(dbId, scannerProgress)
+
+      // Count the newly added game
+      scannerProgress.scannedGames++
+      this.scanProgress.scannedGames++
     } catch (error) {
       // Record failed folder
       scannerProgress.failedFolders.push({
@@ -521,6 +567,28 @@ export class GameScanner extends EventEmitter {
         dataSource
       })
       ipcManager.send('scanner:scan-folder-error', { ...this.scanProgress })
+    }
+  }
+
+  /** Count a game that was already in the library, at most once per scan. */
+  private countExistingGame(gameId: string, scannerProgress: ScannerProgress): void {
+    if (this.countedGameIds.has(gameId)) return
+    this.countedGameIds.add(gameId)
+    scannerProgress.scannedGames++
+    this.scanProgress.scannedGames++
+  }
+
+  /**
+   * Push the review list to the renderer once a scan settles, so the sidebar badge refreshes and
+   * the user is told there is something to review. Only sent when this scan actually added one.
+   */
+  private async notifyPathConflicts(): Promise<void> {
+    if (!this.pathConflictDirty) return
+    this.pathConflictDirty = false
+    try {
+      await pushVersionReviews()
+    } catch (error) {
+      log.error('[Scanner] Failed to publish path conflicts:', error)
     }
   }
 

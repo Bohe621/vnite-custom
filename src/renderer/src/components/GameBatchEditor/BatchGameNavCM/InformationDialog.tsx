@@ -34,6 +34,9 @@ export function InformationDialog({
 }): React.JSX.Element {
   const { t } = useTranslation('game')
   const [editMode, setEditMode] = useState<'incremental' | 'replace' | 'delete'>('incremental')
+  // The NSFW flag is a boolean, so it cannot reuse the array-oriented edit modes above.
+  // It gets its own independent action, defaulting to "leave untouched".
+  const [nsfwAction, setNsfwAction] = useState<'keep' | 'add' | 'remove'>('keep')
   const [developers, setDevelopers] = useState<string[]>([])
   const [publishers, setPublishers] = useState<string[]>([])
   const [genres, setGenres] = useState<string[]>([])
@@ -52,7 +55,9 @@ export function InformationDialog({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     platforms: useGameState(gameId, 'metadata.platforms'),
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    extra: useGameState(gameId, 'metadata.extra')
+    extra: useGameState(gameId, 'metadata.extra'),
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    nsfw: useGameState(gameId, 'apperance.nsfw')
   }))
 
   const extraKeyForSelect = Array.from(
@@ -81,7 +86,8 @@ export function InformationDialog({
           publishers: [currentPublishers, setGamePublishers],
           genres: [currentGenres, setGameGenres],
           platforms: [currentPlatforms, setGamePlatforms],
-          extra: [currentExtra, setGameExtra]
+          extra: [currentExtra, setGameExtra],
+          nsfw: [, setGameNsfw]
         }) => {
           const updateField = (
             fieldName: string,
@@ -147,6 +153,12 @@ export function InformationDialog({
               setGameExtra(newGameExtra)
             }
           }
+
+          // The NSFW flag is orthogonal to the array edit modes above: it is applied
+          // whenever the user picked an action, regardless of the mode tab.
+          if (nsfwAction !== 'keep') {
+            setGameNsfw(nsfwAction === 'add')
+          }
         }
       )
 
@@ -158,6 +170,7 @@ export function InformationDialog({
       setExtraKey('')
       setExtraValue([])
       setFieldsToClear([])
+      setNsfwAction('keep')
 
       toast.success(t('batchEditor.information.success'))
     } catch (error) {
@@ -311,6 +324,26 @@ export function InformationDialog({
             </div>
           </div>
         )}
+
+        {/* NSFW Mark — intentionally kept out of the mode tabs above, since the flag is a
+            boolean and "incremental / replace" have no meaning for it. */}
+        <Separator className="my-4" />
+        <div className={cn('grid grid-cols-[auto_1fr] gap-y-3 gap-x-4 px-3 items-center text-sm')}>
+          <div className={cn('whitespace-nowrap select-none justify-self-start')}>
+            {t('batchEditor.information.nsfw.title')}
+          </div>
+          <Tabs
+            value={nsfwAction}
+            onValueChange={(v) => setNsfwAction(v as 'keep' | 'add' | 'remove')}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="keep">{t('batchEditor.information.nsfw.keep')}</TabsTrigger>
+              <TabsTrigger value="add">{t('batchEditor.information.nsfw.add')}</TabsTrigger>
+              <TabsTrigger value="remove">{t('batchEditor.information.nsfw.remove')}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         {/* Confirm Button */}
         <div className={cn('flex justify-end mt-auto')}>

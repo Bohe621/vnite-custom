@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 import type { GameMemoryViewMode } from '@appTypes/models'
 import type { ImageViewerRequest } from '~/utils/image-viewer'
 
-export type PropertiesDialogTab = 'launcher' | 'path' | 'media'
+export type PropertiesDialogTab = 'launcher' | 'path' | 'media' | 'record'
 type MemoryPageByView = Record<GameMemoryViewMode, number>
 
 export interface GameDetailStore {

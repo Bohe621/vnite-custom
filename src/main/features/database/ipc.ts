@@ -11,34 +11,70 @@ import {
   getGameStorageDetail,
   removeGameImageAttachment
 } from './services'
-import { baseDBManager, ConfigDBManager } from '~/core/database'
+import { baseDBManager, ConfigDBManager, GameDBManager } from '~/core/database'
 import { ipcManager } from '~/core/ipc'
-import { DocChange } from '@appTypes/models'
+import { DocChange, gameLocalDoc } from '@appTypes/models'
+import { applyActiveVersionMirror, normalizeGameLocalDoc } from '@appUtils'
 import { shouldReinferRootPath } from '~/utils'
 
 export function setupDatabaseIPC(): void {
   ipcManager.handle('db:doc-changed', async (_event, change: DocChange) => {
-    // Ensure rootPath consistency when saving game-local data.
-    // If gamePath changed and rootPath is empty or gamePath falls outside rootPath,
-    // re-infer rootPath from the directory of gamePath before saving.
-    if (change.dbName === 'game-local' && change.data?.path?.gamePath) {
-      const oldGamePath = await baseDBManager.getValue(
-        change.dbName,
-        change.docId,
-        'path.gamePath',
-        ''
-      )
+    if (change.dbName !== 'game-local' || !change.data || change.data === '#delete') {
+      return await baseDBManager.setValue(change.dbName, change.docId, '#all', change.data)
+    }
+
+    const stored = await GameDBManager.getExistingGameLocal(change.docId)
+    const incoming = change.data as Partial<gameLocalDoc>
+
+    // Merge against what is already stored instead of against the incoming payload. A partial
+    // payload used to replace whole sub-objects (`path`, `utils`, …) and silently drop the
+    // sibling fields it did not mention. `versions` stays authoritative from the payload so a
+    // deleted version is really deleted.
+    const next = {
+      ...(stored ?? {}),
+      ...incoming,
+      path: { ...(stored?.path ?? {}), ...(incoming.path ?? {}) },
+      launcher: {
+        ...(stored?.launcher ?? {}),
+        ...(incoming.launcher ?? {}),
+        fileConfig: {
+          ...(stored?.launcher?.fileConfig ?? {}),
+          ...(incoming.launcher?.fileConfig ?? {})
+        },
+        urlConfig: {
+          ...(stored?.launcher?.urlConfig ?? {}),
+          ...(incoming.launcher?.urlConfig ?? {})
+        },
+        scriptConfig: {
+          ...(stored?.launcher?.scriptConfig ?? {}),
+          ...(incoming.launcher?.scriptConfig ?? {})
+        }
+      },
+      utils: { ...(stored?.utils ?? {}), ...(incoming.utils ?? {}) },
+      versions: incoming.versions ?? stored?.versions ?? {}
+    } as gameLocalDoc
+
+    normalizeGameLocalDoc(next)
+
+    // Keep rootPath consistent with the launch version's gamePath. Compared against the stored
+    // document, not against the payload.
+    const activeVersion = next.versions[next.currentVersionId]
+    const activeGamePath = activeVersion?.path?.gamePath ?? ''
+    if (activeGamePath) {
+      const previousGamePath =
+        stored?.versions?.[stored.currentVersionId]?.path?.gamePath ?? stored?.path?.gamePath ?? ''
       const newRootPath = shouldReinferRootPath(
-        oldGamePath,
-        change.data.path.gamePath,
-        change.data.utils?.rootPath ?? ''
+        previousGamePath,
+        activeGamePath,
+        activeVersion.utils?.rootPath ?? ''
       )
       if (newRootPath !== null) {
-        change.data.utils = { ...change.data.utils, rootPath: newRootPath }
+        activeVersion.utils.rootPath = newRootPath
+        applyActiveVersionMirror(next)
       }
     }
 
-    return await baseDBManager.setValue(change.dbName, change.docId, '#all', change.data)
+    return await baseDBManager.setValue(change.dbName, change.docId, '#all', next)
   })
 
   ipcManager.handle('db:get-all-docs', async (_event, dbName: string) => {

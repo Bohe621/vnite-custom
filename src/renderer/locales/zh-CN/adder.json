@@ -112,5 +112,130 @@
       "gameIsBeingAdded": "游戏正在添加中",
       "gameAlreadyAdded": "游戏已添加"
     }
+  },
+  "versionConflict": {
+    "title": "版本冲突",
+    "description": "这些游戏的版本数据需要确认：库中存在共享同一条目 ID 的重复记录，或扫描到的文件夹无法自动判定归属。选中一个游戏即可编辑它的全部版本。",
+    "empty": "暂无需要处理的版本冲突",
+    "loading": "加载中…",
+    "save": "保存",
+    "saving": "保存中…",
+    "cancel": "取消",
+    "mergeWarning": "保存后，下列重复条目会被删除，它们的目录将保留为本游戏的版本：",
+    "reason": {
+      "duplicates": "重复条目 {{entries}}",
+      "stale": "失效目录 {{folders}}",
+      "incoming": "待处理目录 {{folders}}",
+      "versionCount": "共 {{versions}} 个版本"
+    },
+    "conflictTags": {
+      "library": "游戏库冲突",
+      "directory": "目录冲突",
+      "version": "版本冲突"
+    },
+    "versions": {
+      "unnamed": "未命名版本",
+      "namePlaceholder": "版本名称",
+      "pathPlaceholder": "游戏目录",
+      "selectFolder": "选择目录",
+      "openInExplorer": "在资源管理器中打开",
+      "refresh": "重新检测目录",
+      "fromEntry": "来自「{{name}}」",
+      "remove": "删除此版本",
+      "incomingBadge": "待加入",
+      "incomingHint": "保存后作为新版本",
+      "ignoreIncoming": "忽略",
+      "dropped": "已忽略 {{folders}} 个目录",
+      "restore": "恢复",
+      "empty": "这个游戏已经没有可编辑的版本了",
+      "missingWarning": "有 {{folders}} 个目录不存在，这些版本将无法启动",
+      "duplicateWarning": "多个版本指向同一个目录，请先把目录区分开",
+      "ignoreDropped": "把已忽略的目录加入扫描排除列表，之后扫描不再报告",
+      "status": {
+        "ok": "目录有效",
+        "missing": "目录不存在",
+        "duplicate": "目录重复",
+        "duplicateWith": "与「{{name}}」重复"
+      }
+    },
+    "mergeConfirm": {
+      "title": "确认合并重复条目？",
+      "description": "将保留 1 条记录，其余 {{entries}} 条会被删除：{{names}}。它们目录中的启动配置会成为保留记录的版本。此操作不可撤销。"
+    },
+    "notification": {
+      "title": "发现版本冲突",
+      "description": "有 {{total}} 个游戏的版本数据需要确认。",
+      "review": "查看",
+      "loadFailed": "加载版本数据失败",
+      "saveFailed": "保存失败",
+      "partialSave": "版本已保存，但清理重复条目时出错",
+      "saved": "已保存",
+      "refreshed": "已重新检测冲突目录",
+      "refreshedPruned": "已重新检测，清理了 {{count}} 个失效项",
+      "prunedEntries": "失效重复条目：{{names}}",
+      "prunedFolders": "失效目录：{{names}}",
+      "refreshFailed": "重新检测冲突目录失败"
+    }
+  },
+  "conflictCenter": {
+    "title": "冲突管理",
+    "description": "这里集中处理扫描与入库之后需要你拍板的事：游戏库里的版本数据（重复条目、无法判定归属的文件夹），以及标签入库时撞在一起的名字。选中一个游戏即可编辑它的全部版本。",
+    "tabs": {
+      "version": "游戏版本",
+      "tag": "标签"
+    }
+  },
+  "tagConflict": {
+    "tabs": {
+      "pending": "待处理 {{count}}",
+      "ignored": "已忽略 {{count}}"
+    },
+    "pendingHint": "入库不再自动按文本归并，撞名的两条会列在这里由你判断是不是同一个概念。",
+    "ignoredHint": "这些已标记为「保留现状」，同一个写法不会再打扰你；采纳任意一侧即可撤销。",
+    "moveVsMerge": "「合并…」＝这两个标签其实是同一个概念（或这条压根不该存在）：选个目标并成一条，两边同语言都有译名时会让你逐个确认保留哪个。「修正索引…」＝这个来源指向了错的标签，只把索引改过去，两个标签都保留。",
+    "empty": "暂无需要处理的标签冲突",
+    "emptyIgnored": "没有已忽略的标签冲突",
+    "kind": {
+      "duplicate": "疑似同义",
+      "name": "译名不同"
+    },
+    "fromSource": "来自 {{provider}}",
+    "ignoredBadge": "已忽略",
+    "origin": {
+      "builtin": "内置译名",
+      "user": "自定义译名",
+      "fetched": "抓取积累"
+    },
+    "duplicate": {
+      "summary": "两个标签在「{{lang}}」下的名字都是「{{name}}」"
+    },
+    "name": {
+      "current": "当前名字",
+      "incoming": "{{provider}} 抓到的写法"
+    },
+    "action": {
+      "merge": "合并…",
+      "keepBoth": "保留为两条",
+      "acceptName": "采纳抓到的名字",
+      "keepCurrent": "保留现有名字",
+      "moveSource": "修正索引…"
+    },
+    "notification": {
+      "resolved": "已处理",
+      "resolveFailed": "处理失败"
+    },
+    "compare": {
+      "minted": "新增（{{provider}}）",
+      "existing": "已有标签（内置/其它源）",
+      "evidence": "命中「{{a}}」↔「{{b}}」",
+      "verdict": {
+        "same": "同一写法完全一致 → 疑似同义",
+        "alias": "命中对方的别名 / 另一语言写法 → 疑似同义",
+        "similar": "英文名高度相似 → 疑似同义",
+        "different": "写法对不上 → 可能不是同一概念",
+        "unknown": "缺少可比对的写法"
+      },
+      "noComparableHint": "这两条除「冲突语言」外没有共同语言的名字，没法比对。抓一次该源其它语言站的页面即可补上。"
+    }
   }
 }

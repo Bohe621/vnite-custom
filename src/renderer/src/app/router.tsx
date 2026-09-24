@@ -17,6 +17,7 @@ import { GameScannerManager } from '~/pages/GameScannerManager'
 import { Library } from '~/pages/Library'
 import { Plugin } from '~/pages/Plugin/main'
 import { Record } from '~/pages/Record'
+import { TagLexiconManager } from '~/pages/TagLexiconManager'
 import { TransformerManager } from '~/pages/TransformerManager'
 import { Icon } from '~/pages/arts/Icon'
 import { Logo } from '~/pages/arts/Logo'
@@ -197,6 +198,13 @@ const transformerRoute = createRoute({
   errorComponent: RouteContentErrorFallback
 })
 
+const tagLexiconRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tag-lexicon',
+  component: TagLexiconManager,
+  errorComponent: RouteContentErrorFallback
+})
+
 const pluginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/plugin',
@@ -233,6 +241,7 @@ const routeTree = rootRoute.addChildren([
   databaseInspectorRoute,
   databaseInspectorGameRoute,
   transformerRoute,
+  tagLexiconRoute,
   pluginRoute,
   iconRoute,
   logoRoute

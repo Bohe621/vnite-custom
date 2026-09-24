@@ -42,6 +42,7 @@
       "progress": "{{percentage}}% Complete",
       "games": "{{count}} Games",
       "targetCollection": "Target Collection {{collection}}",
+      "nsfw": "NSFW",
       "statusLabels": {
         "idle": "Idle",
         "scanning": "Scanning",
@@ -128,6 +129,13 @@
     "hierarchyLevelHelp": "Default 0: the first-level subfolder under Path is treated as the game folder.",
     "targetCollection": "Target Collection",
     "targetCollectionNone": "None",
-    "normalizeFolderName": "Clean Folder Name"
+    "targetCollectionPlaceholder": "Select a collection",
+    "targetCollectionSearch": "Search or type a new name",
+    "targetCollectionCreate": "Create “{{name}}”",
+    "targetCollectionEmpty": "No matching collection",
+    "targetCollectionUnnamed": "Unnamed collection",
+    "normalizeFolderName": "Clean Folder Name",
+    "nsfw": "NSFW Directory",
+    "nsfwHelp": "Games added by scanning this directory are marked as NSFW automatically."
   }
 }

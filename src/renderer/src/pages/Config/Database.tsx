@@ -15,11 +15,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '~/components/ui/alert-dialog'
+import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Separator } from '~/components/ui/separator'
 import { Switch } from '~/components/ui/switch'
 import { useConfigLocalState } from '~/hooks'
+import { useTagConflictStore } from '~/stores/tagConflictStore'
+import { useVersionConflictStore } from '~/stores/versionConflictStore'
 import { useBackupStore } from '~/stores/utils'
 import { cn } from '~/utils'
 
@@ -31,6 +34,25 @@ export function Database(): React.JSX.Element {
   const [imgStorageBackend] = useConfigLocalState('memory.image.storageBackend')
   const [defaultBackupPath] = useConfigLocalState('database.defaultBackupPath')
   const setIsBackingUp = useBackupStore((state) => state.setBackingUp)
+
+  // The workbench itself lives in the sidebar (it owns the badge); this page only opens it.
+  // The badge adds up both kinds of conflict, matching the sidebar.
+  const versionConflictCount = useVersionConflictStore((state) => state.reviews.length)
+  const tagConflictCount = useTagConflictStore(
+    (state) => state.conflicts.filter((item) => item.status === 'pending').length
+  )
+  const initializeVersionConflicts = useVersionConflictStore((state) => state.initialize)
+  const refreshVersionConflicts = useVersionConflictStore((state) => state.refresh)
+  const setVersionConflictDialogOpen = useVersionConflictStore((state) => state.setDialogOpen)
+  const initializeTagConflicts = useTagConflictStore((state) => state.initialize)
+
+  const openVersionReview = async (): Promise<void> => {
+    // Reload first: the list may be stale if the page was opened long after the sidebar mounted.
+    await initializeVersionConflicts()
+    await initializeTagConflicts()
+    await refreshVersionConflicts()
+    setVersionConflictDialogOpen(true)
+  }
 
   useEffect(() => {
     ipcManager.invoke('app:is-portable-mode').then((isPortable) => {
@@ -254,6 +276,20 @@ export function Database(): React.JSX.Element {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              </ConfigItemPure>
+
+              <ConfigItemPure
+                title={t('database.organizeVersions.title')}
+                description={t('database.organizeVersions.description')}
+              >
+                <Button variant={'outline'} onClick={() => void openVersionReview()}>
+                  {t('database.organizeVersions.button')}
+                  {versionConflictCount + tagConflictCount > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {versionConflictCount + tagConflictCount}
+                    </Badge>
+                  )}
+                </Button>
               </ConfigItemPure>
 
               <ConfigItem

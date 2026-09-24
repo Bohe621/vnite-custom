@@ -42,6 +42,7 @@
       "progress": "{{percentage}}% 完成",
       "games": "{{count}} 个游戏",
       "targetCollection": "{{collection}} 目标收藏",
+      "nsfw": "NSFW",
       "statusLabels": {
         "idle": "空闲",
         "scanning": "扫描中",
@@ -128,6 +129,13 @@
     "hierarchyLevelHelp": "默认 0：Path 下的第一级子文件夹视为游戏文件夹。",
     "targetCollection": "目标收藏",
     "targetCollectionNone": "无",
-    "normalizeFolderName": "清理文件夹名"
+    "targetCollectionPlaceholder": "选择收藏夹",
+    "targetCollectionSearch": "搜索或输入新名称",
+    "targetCollectionCreate": "新建「{{name}}」",
+    "targetCollectionEmpty": "没有匹配的收藏夹",
+    "targetCollectionUnnamed": "未命名收藏夹",
+    "normalizeFolderName": "清理文件夹名",
+    "nsfw": "NSFW 目录",
+    "nsfwHelp": "该目录下扫描添加的游戏会自动标记为 NSFW。"
   }
 }

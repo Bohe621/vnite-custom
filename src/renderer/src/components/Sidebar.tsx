@@ -1,4 +1,5 @@
 import { useRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ipcManager } from '~/app/ipc'
@@ -20,7 +21,10 @@ import { useGameAdderStore } from '~/pages/GameAdder/store'
 import { useGameBatchAdderStore } from '~/pages/GameBatchAdder/store'
 import { useGameScannerStore } from '~/pages/GameScannerManager/store'
 import { useSteamImporterStore } from '~/pages/Importer/SteamImporter/store'
+import { useTagConflictStore } from '~/stores/tagConflictStore'
+import { useVersionConflictStore } from '~/stores/versionConflictStore'
 import { cn } from '~/utils'
+import { ConflictCenterDialog } from './ConflictCenter/ConflictCenterDialog'
 import { ToolboxPopover } from './Toolbox/ToolboxPopover'
 
 export function Sidebar(): React.JSX.Element {
@@ -31,6 +35,25 @@ export function Sidebar(): React.JSX.Element {
   const setEditingScanner = useGameScannerStore((state) => state.setEditingScanner)
   const [showToolbox] = useConfigState('appearances.sidebar.showToolbox')
   const { t } = useTranslation('sidebar')
+
+  // Conflicts can be raised by any scan, including scans that never open the scanner page, so the
+  // sidebar owns the subscription and the badge lives here. The badge adds up both kinds — game
+  // version conflicts and tag conflicts — because to the user they are the same thing:
+  // "something in the conflict centre needs a decision".
+  const conflictCount = useVersionConflictStore((state) => state.reviews.length)
+  const tagConflictCount = useTagConflictStore(
+    (state) => state.conflicts.filter((item) => item.status === 'pending').length
+  )
+  const setConflictDialogOpen = useVersionConflictStore((state) => state.setDialogOpen)
+  const initializeVersionConflicts = useVersionConflictStore((state) => state.initialize)
+  const initializeTagConflicts = useTagConflictStore((state) => state.initialize)
+
+  useEffect(() => {
+    void initializeVersionConflicts()
+    void initializeTagConflicts()
+  }, [initializeVersionConflicts, initializeTagConflicts])
+
+  const totalConflictCount = conflictCount + tagConflictCount
 
   return (
     <div
@@ -224,6 +247,30 @@ export function Sidebar(): React.JSX.Element {
         </DropdownMenu>
         {/* Toolbox */}
         {showToolbox && <ToolboxPopover />}
+        {/* Conflicts — version conflicts from scans/duplicate entries, tag conflicts from ingestion */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('relative min-h-0 min-w-0 p-2 non-draggable')}
+              onClick={() => setConflictDialogOpen(true)}
+            >
+              <span
+                className={cn(
+                  'icon-[mdi--alert-circle-outline] w-5 h-5',
+                  totalConflictCount > 0 && 'text-destructive'
+                )}
+              ></span>
+              {totalConflictCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-destructive text-white text-[10px] leading-4 text-center">
+                  {totalConflictCount > 99 ? '99+' : totalConflictCount}
+                </span>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t('actions.conflicts')}</TooltipContent>
+        </Tooltip>
         {/* Settings Button */}
         <Tooltip>
           <TooltipTrigger>
@@ -234,6 +281,8 @@ export function Sidebar(): React.JSX.Element {
           <TooltipContent side="right">{t('actions.settings')}</TooltipContent>
         </Tooltip>
       </div>
+      {/* Renders through a portal only while open, so it does not take part in the sidebar layout. */}
+      <ConflictCenterDialog />
     </div>
   )
 }

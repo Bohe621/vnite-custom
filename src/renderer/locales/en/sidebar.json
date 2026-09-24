@@ -21,6 +21,10 @@
       "hideNSFW": "Hide NSFW games",
       "onlyNSFW": "Show only NSFW games"
     },
+    "nsfwCoverBlur": {
+      "on": "Blur NSFW covers: on",
+      "off": "Blur NSFW covers: off"
+    },
     "localGameFilter": {
       "all": "Show all games",
       "hideLocal": "Hide local games",
@@ -34,7 +38,9 @@
     "lightMode": "Light Mode",
     "cloudSyncDisabled": "Cloud Sync Disabled",
     "addGame": "Add Game",
-    "settings": "Settings"
+    "settings": "Settings",
+    "versionConflicts": "Version Conflicts",
+    "conflicts": "Conflicts"
   },
   "adder": {
     "addGame": "Add Game",

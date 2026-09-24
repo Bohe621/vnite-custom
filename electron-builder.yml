@@ -10,6 +10,9 @@ files:
   - '!dev/*'
   - '!app/*'
   - '!docs/*'
+  # Local agent workspace (screenshots, probe scripts). Never part of the app, and it is excluded
+  # from git locally, so nothing else keeps it out of the package.
+  - '!.workbuddy/*'
   - '!native/**'
   - '!patches/**'
   - '!electron.vite.config.{js,ts,mjs,cjs}'

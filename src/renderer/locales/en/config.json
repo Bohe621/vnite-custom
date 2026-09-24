@@ -497,6 +497,11 @@
     "importWarning": "Importing a database will overwrite the current database. This operation is irreversible! The application will restart automatically after the operation.",
     "confirmImportV2": "Are you sure you want to import the V2 database?",
     "importV2Warning": "Importing a V2 database will overwrite the current database. This operation is irreversible! The application will restart automatically after the operation.",
+    "organizeVersions": {
+      "title": "Organise Game Versions",
+      "description": "Merge the duplicate entries of one game into a single record, keeping the other directories as its versions. Folders the scanner could not place are handled here too.",
+      "button": "Open"
+    },
     "defaultBackupPath": {
       "title": "Default Database Backup Path",
       "description": "When set, the backup dialog will open at this directory by default.",
@@ -534,6 +539,12 @@
       "enableDescription": "Enable transformer to automatically transform game metadata",
       "manage": "Manage Transformer Rules",
       "manageDescription": "Manage and configure metadata transformer",
+      "manageButton": "Manage"
+    },
+    "tagLexicon": {
+      "title": "Tag Lexicon",
+      "manage": "Manage Tag Lexicon",
+      "manageDescription": "Build your own multi-language tag lexicon to decide how scraped tags are displayed",
       "manageButton": "Manage"
     },
     "storage": {

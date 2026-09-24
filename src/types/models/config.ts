@@ -1,6 +1,8 @@
 import type { LauncherPreset } from './launcherPreset'
 import { DEFAULT_LOCAL_UPSCALER_CONFIG, type LocalUpscalerConfig } from '../utils/upscaler'
 import { defaultReportExportOptions, type ReportExportOptions } from '../report'
+import type { PathConflict } from '../utils/gameConflict'
+import type { VersionReviewLogEntry } from '../utils/versionReview'
 
 export enum NSFWBlurLevel {
   Off = 0,
@@ -29,6 +31,23 @@ export type GameNavElement =
       type: ReservableType
       reserveSpace: boolean
     }
+
+/**
+ * How the library game list is rendered.
+ * - `list`: compact one-line rows (game icon + name + sort info)
+ * - `grid`: poster grid built from the portrait cover image
+ */
+export type GameListDisplayMode = 'list' | 'grid'
+
+/**
+ * Card shape used by the showcase (homepage) game lists.
+ * - `portrait`: the classic 2:3 cover poster (148x222)
+ * - `wide`: the 3:2 wide cover poster, same height but much wider (333x222)
+ *
+ * Both shapes share the same image height, so switching only changes the number
+ * of columns per row, not the row height.
+ */
+export type PosterShape = 'portrait' | 'wide'
 
 export interface configDocs {
   general: {
@@ -69,6 +88,7 @@ export interface configDocs {
           | 'record.storageSize'
         order: 'asc' | 'desc'
       }
+      posterShape: PosterShape
     }
     gameList: {
       sort: {
@@ -99,6 +119,7 @@ export interface configDocs {
       showRecentGames: boolean
       showAllGamesInGroup: boolean
       gameNavStyle: GameNavElement[]
+      displayMode: GameListDisplayMode
     }
     gameHeader: {
       showOriginalName: boolean
@@ -334,9 +355,17 @@ export interface configLocalDocs {
           targetCollection: string
           normalizeFolderName?: boolean
           upscaleScale?: number
+          // Mark every game added by this scanner as NSFW. Absent in older configs (= false).
+          nsfw?: boolean
         }
       }
     }
+    // Path conflicts raised by the scanner's identity fallback. Kept in the local (unsynced) config
+    // because the paths themselves are machine-specific.
+    pathConflicts: PathConflict[]
+    // What the version workbench did to each game (folders ignored or adopted, entries merged), so
+    // the user can review it and undo an ignore. Local for the same reason as `pathConflicts`.
+    versionLog: VersionReviewLogEntry[]
   }
   database: {
     defaultBackupPath: string
@@ -401,7 +430,8 @@ export const DEFAULT_CONFIG_VALUES: Readonly<configDocs> = {
       sort: {
         by: 'metadata.name',
         order: 'desc' as const
-      }
+      },
+      posterShape: 'portrait' as const
     },
     gameList: {
       sort: {
@@ -423,7 +453,8 @@ export const DEFAULT_CONFIG_VALUES: Readonly<configDocs> = {
         { type: 'gameName' },
         { type: 'sortInfo' },
         { type: 'localFlag', reserveSpace: false }
-      ]
+      ],
+      displayMode: 'grid'
     },
     gameHeader: {
       showOriginalName: false
@@ -479,7 +510,9 @@ export const DEFAULT_CONFIG_VALUES: Readonly<configDocs> = {
         opacity: 0.9
       }
     },
-    nsfwBlurLevel: NSFWBlurLevel.Off,
+    // NSFW covers start out blurred: the library tag (`game.apperance.nsfw`) is enough of a signal
+    // that the art should not be on screen by default. The titlebar toggle turns it off per click.
+    nsfwBlurLevel: NSFWBlurLevel.BlurImage,
     nsfwFilterMode: NSFWFilterMode.All,
     localGameFilterMode: LocalGameFilterMode.All,
     customVisibilityFilter: {
@@ -631,9 +664,12 @@ export const DEFAULT_CONFIG_LOCAL_VALUES: Readonly<configLocalDocs> = {
           targetCollection: string
           normalizeFolderName?: boolean
           upscaleScale?: number
+          nsfw?: boolean
         }
       }
-    }
+    },
+    pathConflicts: [] as PathConflict[],
+    versionLog: [] as VersionReviewLogEntry[]
   },
   network: {
     proxy: {

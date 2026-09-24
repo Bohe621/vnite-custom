@@ -11,3 +11,7 @@ out
 dev
 app
 /target
+
+# build artifacts
+*.tsbuildinfo
+electron.vite.config.*.mjs

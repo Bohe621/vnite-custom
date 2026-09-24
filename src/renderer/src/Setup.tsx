@@ -6,7 +6,7 @@ import { ipcManager } from './app/ipc'
 import { useConfigState } from './hooks'
 import { useGameAdderStore } from './pages/GameAdder/store'
 import { usePluginInfoStore } from './pages/Plugin/store'
-import { randomGame } from './stores/game'
+import { randomGame, useGamePathStore } from './stores/game'
 
 export function Setup(): React.JSX.Element {
   const router = useRouter()
@@ -39,6 +39,23 @@ export function Setup(): React.JSX.Element {
     ipcManager.on('plugin:update-plugin-stats', (_event, stats) => {
       usePluginInfoStore.getState().setStats(stats)
     })
+  }, [])
+
+  useEffect(() => {
+    // A scan is when folders get moved around on disk, and path existence is otherwise only ever
+    // checked once per session — without this, a game whose folder was deleted while the app was
+    // running would keep its stale "still there" verdict and stay in "all games".
+    const recheck = (): void => {
+      void useGamePathStore.getState().recheckAll()
+    }
+
+    const unsubscribeCompleted = ipcManager.on('scanner:scan-completed', recheck)
+    const unsubscribeStopped = ipcManager.on('scanner:scan-stopped', recheck)
+
+    return () => {
+      unsubscribeCompleted()
+      unsubscribeStopped()
+    }
   }, [])
 
   changeFontFamily(fontFamily)

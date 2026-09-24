@@ -54,6 +54,16 @@ export function isGamesLoaded(): boolean {
 
 log.initialize()
 
+// Dev uses a separate userData dir. This MUST run before app.whenReady():
+// otherwise Chromium's storage/network sub-processes are already spawned
+// against the default userData path and setPath() is too late. That made dev
+// and the installed build share the same Local/Session Storage leveldb, which
+// caused the light/dark theme to randomly revert (theme-mode read empty under
+// concurrent access -> defaulted to dark -> written back and persisted).
+if (!app.isPackaged) {
+  app.setPath('userData', join(getAppRootPath(), 'dev'))
+}
+
 global.fetch = net.fetch as typeof global.fetch
 
 const pendingGameLaunchIds: string[] = []
@@ -185,11 +195,6 @@ app.whenReady().then(async () => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
-
-  // Set the userData directory to a different location in development
-  if (!app.isPackaged) {
-    app.setPath('userData', join(getAppRootPath(), 'dev'))
-  }
 
   log.transports.file.resolvePathFn = (): string => getLogsPath()
 

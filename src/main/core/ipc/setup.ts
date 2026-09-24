@@ -7,6 +7,7 @@ import { setupLauncherIPC } from '~/features/launcher'
 import { setupNativeMonitorIPC } from '~/features/monitor'
 import { setupScraperIPC } from '~/features/scraper'
 import { setupSystemIPC } from '~/features/system'
+import { setupTagLexiconIPC } from '~/features/tagLexicon'
 import { setupThemeIPC } from '~/features/theme'
 import { setupToolboxIPC } from '~/features/toolbox'
 import { setupTransformerIPC } from '~/features/transformer'
@@ -24,6 +25,7 @@ export function setupIPC(): void {
   setupLauncherIPC()
   setupScraperIPC()
   setupSystemIPC()
+  setupTagLexiconIPC()
   setupThemeIPC()
   setupToolboxIPC()
   setupTransformerIPC()

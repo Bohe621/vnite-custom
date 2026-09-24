@@ -18,6 +18,7 @@ export function InformationCard({
   const [originalName, setOriginalName] = useGameState(gameId, 'metadata.originalName')
   const [name, setName] = useGameState(gameId, 'metadata.name')
   const [sortName] = useGameState(gameId, 'metadata.sortName')
+  const [version] = useGameState(gameId, 'metadata.version')
   const [developers, setDevelopers] = useGameState(gameId, 'metadata.developers')
   const [publishers, setPublishers] = useGameState(gameId, 'metadata.publishers')
   const [releaseDate, setReleaseDate] = useGameState(gameId, 'metadata.releaseDate')
@@ -34,7 +35,8 @@ export function InformationCard({
       publishers: t('detail.overview.information.fields.publishers'),
       releaseDate: t('detail.overview.information.fields.releaseDate'),
       platforms: t('detail.overview.information.fields.platforms'),
-      genres: t('detail.overview.information.fields.genres')
+      genres: t('detail.overview.information.fields.genres'),
+      version: t('detail.overview.information.fields.version')
     }
 
     copyWithToast(
@@ -45,7 +47,8 @@ export function InformationCard({
         publishers,
         releaseDate,
         genres,
-        platforms
+        platforms,
+        version
       })
         .map(([key, value]) => `${fields[key]}: ${Array.isArray(value) ? value.join(', ') : value}`)
         .join('\n')
@@ -246,6 +249,15 @@ export function InformationCard({
                 </React.Fragment>
               ))}
         </div>
+
+        {/* version */}
+        <div
+          className={cn('select-none cursor-pointer max-w-[100px]')}
+          onClick={() => copyWithToast(version)}
+        >
+          {t('detail.overview.information.fields.version')}
+        </div>
+        <div>{version === '' ? t('detail.overview.information.empty') : version}</div>
       </div>
 
       <SearchInformationDialog

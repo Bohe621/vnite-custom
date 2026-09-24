@@ -7,16 +7,18 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from '~/components/ui/context-menu'
-import { useConfigState, useGameState } from '~/hooks'
+import { useConfigState, useGameState, useGameVersions } from '~/hooks'
 import { useRunningGames } from '~/pages/Library/store'
 import { cn, copyWithToast } from '~/utils'
 import { GameImage } from '../ui/game-image'
 import { Config } from './Config'
+import { GameDirectory } from './GameDirectory'
 import { Record } from './Overview/Record'
 import { StartGame } from './StartGame'
 import { StopGame } from './StopGame'
 import { useGameDetailStore } from './store'
 import { openLargeGameMediaImage } from './utils'
+import { VersionSelecter } from './VersionSelecter'
 
 export function Header({
   gameId,
@@ -27,6 +29,7 @@ export function Header({
 }): React.JSX.Element {
   const runningGames = useRunningGames((state) => state.runningGames)
   const [name] = useGameState(gameId, 'metadata.name')
+  const { currentVersionId, setCurrentVersion } = useGameVersions(gameId)
   const [originalName] = useGameState(gameId, 'metadata.originalName')
   const [showOriginalNameInGameHeader] = useConfigState('game.gameHeader.showOriginalName')
   const [showCover] = useConfigState('appearances.gameDetail.showCover')
@@ -96,6 +99,17 @@ export function Header({
 
               {/* Configuration button */}
               <Config gameId={gameId} />
+
+              {/* Launch version — decides the launcher and launch mode used by StartGame */}
+              <div className={cn('flex h-[40px] items-center')}>
+                <VersionSelecter
+                  gameId={gameId}
+                  scope="launch"
+                  value={currentVersionId}
+                  onChange={(versionId) => void setCurrentVersion(versionId)}
+                  className={cn('max-w-[240px]')}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -129,6 +143,15 @@ export function Header({
           </ContextMenuContent>
         </ContextMenu>
       </div>
+      {/* Game folder — its own line, sitting inside the gap the name row and the record row already
+          had, not added on top of it. The two negative margins sum to
+          20 (spacing to keep) - 2 × 20 (the two gap-5s) - 26 (this row's height) = -46px, which is
+          what holds the distance between the name row's bottom and the record block's top at the
+          20px it has always been. Split so the row's own top edge — and therefore its text, which
+          carries the `pt-[5px]` — does not move: the extra height all goes downwards.
+          If the row's height changes (it carries a `pt-[5px] pb-[5px]`), re-derive this.
+          Capped at 750px so a deep path cannot stretch across the whole header. */}
+      <GameDirectory gameId={gameId} className={cn('max-w-[750px] pl-1 -mt-[20px] -mb-[26px]')} />
       {/* Game record section */}
       <div className="pt-6">
         <Record gameId={gameId} />

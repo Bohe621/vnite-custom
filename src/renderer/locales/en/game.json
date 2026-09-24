@@ -9,6 +9,14 @@
     "gameListSettings": "Game List Settings",
     "collapseAllGroups": "Collapse All Groups",
     "groupBy": "Group by",
+    "displayMode": {
+      "switchToGrid": "Switch to poster view",
+      "switchToList": "Switch to list view"
+    },
+    "posterShape": {
+      "switchToWide": "Switch to wide posters (homepage lists)",
+      "switchToPortrait": "Switch to portrait posters (homepage lists)"
+    },
     "groups": {
       "none": "No Grouping",
       "collection": "Collection",
@@ -49,6 +57,9 @@
         "score": "Score",
         "storageSize": "Game Size"
       }
+    },
+    "notInLibrary": {
+      "title": "Not in Library"
     },
     "playStatus": {
       "adjustOrder": "Adjust Order"
@@ -286,7 +297,8 @@
           "publishers": "Publishers",
           "releaseDate": "Release Date",
           "platforms": "Platforms",
-          "genres": "Genres"
+          "genres": "Genres",
+          "version": "Version"
         },
         "empty": "None",
         "hints": {
@@ -336,7 +348,8 @@
         "rating": "My Rating",
         "neverRun": "Never played",
         "storageSize": "Game Size",
-        "storageSizeEmpty": "Not calculated"
+        "storageSizeEmpty": "Not calculated",
+        "gameDirectoryEmpty": "Not set"
       }
     },
     "memory": {
@@ -554,7 +567,58 @@
       "tabs": {
         "launcher": "Launch",
         "path": "Path",
-        "media": "Media"
+        "media": "Media",
+        "record": "Records"
+      },
+      "record": {
+        "ignored": {
+          "title": "Ignored folders",
+          "count": "{{count}}",
+          "empty": "No folder has been ignored yet",
+          "hint": "Ignored folders are skipped by the next scan. Remove a record to let the folder be scanned again.",
+          "statusActive": "Active",
+          "statusReleased": "No longer ignored",
+          "remove": "Remove this record and let the folder be scanned again",
+          "clear": "Clear all",
+          "clearConfirm": {
+            "title": "Clear the ignored folders?",
+            "description": "{{count}} folders will be removed from the scanner ignore list. The next scan will see them again, and may report conflicts. Merges and adoptions are kept."
+          }
+        },
+        "history": {
+          "title": "Other records",
+          "empty": "No other records yet",
+          "remove": "Remove this record"
+        },
+        "actions": {
+          "merge": "Merged {{count}} duplicate entries: {{names}}",
+          "adopt": "Adopted folder {{directory}} as version \"{{name}}\""
+        },
+        "notifications": {
+          "removed": "Record removed",
+          "cleared": "Processing records cleared",
+          "error": "Failed: {{message}}"
+        }
+      },
+      "versions": {
+        "search": "Search versions…",
+        "noResults": "No version found",
+        "defaultName": "Default version",
+        "unnamed": "Untitled version",
+        "create": "New version…",
+        "rename": "Rename…",
+        "delete": "Delete this version",
+        "createTitle": "New version",
+        "createDescription": "The new version copies the paths and launcher settings of “{{source}}”; you can change them afterwards.",
+        "renameTitle": "Rename version",
+        "namePlaceholder": "e.g. v1.11, Translated, Uncensored",
+        "deleteTitle": "Delete version “{{name}}”?",
+        "deleteDescription": "Its paths and launcher settings are removed as well. This cannot be undone.",
+        "deleteLaunchDescription": "This is the current launch version; another version will be selected instead. Its paths and launcher settings are removed as well. This cannot be undone.",
+        "scope": {
+          "edit": "Pick which version to edit. This does not change the launch version.",
+          "launch": "Pick the launch version. “Start game” uses this version's launcher and launch mode."
+        }
       },
       "path": {
         "title": "Game & Save",
@@ -744,6 +808,12 @@
         "platforms": "Separate platforms with commas",
         "genres": "Separate genres with commas",
         "extraKey": "Only one extra info can be modified at a time"
+      },
+      "nsfw": {
+        "title": "NSFW Mark",
+        "keep": "Leave as is",
+        "add": "Add mark",
+        "remove": "Remove mark"
       },
       "clearFields": "Select fields to clear",
       "success": "Bulk modified game information",

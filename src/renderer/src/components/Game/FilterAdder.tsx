@@ -6,14 +6,21 @@ import { useTranslation } from 'react-i18next'
 export function FilterAdder({
   field,
   value,
+  label,
   className
 }: {
   field: string
   value: string
+  /**
+   * 显示文本。标签字段存的是实体 key（形如 `@vndb:lesbian sex`），必须由调用方
+   * 传入当前语言的译名；不传则直接显示 value。筛选比较始终用 value。
+   */
+  label?: string
   className?: string
 }): React.JSX.Element {
   const { filter, addFilter, updateFilter } = useFilterStore()
   const { t } = useTranslation('game')
+  const text = label ?? value
   return (
     <button
       className={cn(
@@ -28,10 +35,10 @@ export function FilterAdder({
             addFilter(field, value)
           }
         }
-        toast.info(t('detail.filter.added', { field: field, value }))
+        toast.info(t('detail.filter.added', { field: field, value: text }))
       }}
     >
-      {value}
+      {text}
     </button>
   )
 }

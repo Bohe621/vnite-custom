@@ -6,9 +6,47 @@ import {
   EventType
 } from '@appTypes/event'
 import { ReportExportRequest, ReportExportResponse } from '@appTypes/report'
-import { BatchUpdateGameMetadataProgress, OverallScanProgress } from '@appTypes/utils'
+import {
+  BatchUpdateGameMetadataProgress,
+  OverallScanProgress,
+  VersionReviewDetail,
+  VersionReviewRecord,
+  VersionReviewRecordResult,
+  VersionReviewRefreshResult,
+  VersionReviewSavePayload,
+  VersionReviewSaveResult,
+  VersionReviewSummary
+} from '@appTypes/utils'
 import { ProgressInfo, UpdateCheckResult } from 'electron-updater'
-import type { GameMediaType, LauncherPresetApplyResult } from './models'
+import type {
+  GameMediaType,
+  GameTagMigrationResult,
+  LauncherPresetApplyResult,
+  TagLexiconAddSourceParams,
+  TagLexiconConflict,
+  TagLexiconConflictResolveParams,
+  TagLexiconDeleteTagParams,
+  TagLexiconDisplayMapParams,
+  TagLexiconEnsureManyParams,
+  TagLexiconEnsureParams,
+  TagLexiconEntity,
+  TagLexiconExportParams,
+  TagLexiconExportResult,
+  TagLexiconGetEntitiesParams,
+  TagLexiconImportParams,
+  TagLexiconImportResult,
+  TagLexiconMergeParams,
+  TagLexiconMigrateGameTagsParams,
+  TagLexiconMoveSourceParams,
+  TagLexiconMoveSourceResult,
+  TagLexiconQueryParams,
+  TagLexiconQueryResult,
+  TagLexiconRemoveSourceParams,
+  TagLexiconRemoveSourceResult,
+  TagLexiconResolveParams,
+  TagLexiconSetNameParams,
+  TagLexiconState
+} from './models'
 import { BatchGameInfo, configDocs, configLocalDocs, gameDoc, GameTimerStatus } from './models'
 import { GameDatabaseStorageDetail, LocalDatabaseStorageReport } from './models/databaseInspector'
 import {
@@ -254,7 +292,11 @@ type MainIpcEvents =
       'importer:get-steam-games': (steamId: string) => SteamFormattedGameInfo[]
       'importer:import-selected-steam-games': (games: SteamFormattedGameInfo[]) => number
 
-      'launcher:select-preset': (presetId: string, gameId: string) => LauncherPresetApplyResult
+      'launcher:select-preset': (
+        presetId: string,
+        gameId: string,
+        versionId?: string
+      ) => LauncherPresetApplyResult
 
       'toolbox:launch-tool': (tool: {
         path: string
@@ -303,6 +345,37 @@ type MainIpcEvents =
       'theme:save': (cssContent: string) => void
       'theme:load': () => string | null
       'theme:select-preset': (preset: string) => string
+
+      // Tag lexicon events（用户自建多语言标签词库）
+      'tag-lexicon:get-state': () => TagLexiconState
+      'tag-lexicon:query': (params: TagLexiconQueryParams) => TagLexiconQueryResult
+      'tag-lexicon:get-entities': (params: TagLexiconGetEntitiesParams) => TagLexiconEntity[]
+      'tag-lexicon:set-name': (params: TagLexiconSetNameParams) => void
+      'tag-lexicon:delete-tag': (params: TagLexiconDeleteTagParams) => void
+      'tag-lexicon:resolve': (params: TagLexiconResolveParams) => string | null
+      'tag-lexicon:ensure': (params: TagLexiconEnsureParams) => string
+      'tag-lexicon:ensure-many': (params: TagLexiconEnsureManyParams) => string[]
+      'tag-lexicon:display-map': (params: TagLexiconDisplayMapParams) => Record<string, string>
+      'tag-lexicon:merge': (params: TagLexiconMergeParams) => void
+      'tag-lexicon:add-source': (params: TagLexiconAddSourceParams) => void
+      // Conflicts raised by ingestion: two concepts colliding on one name, or a fetched spelling
+      // disagreeing with the name already stored for that language.
+      'tag-lexicon:conflicts': () => TagLexiconConflict[]
+      'tag-lexicon:conflict-resolve': (params: TagLexiconConflictResolveParams) => void
+      // Move / detach every clue of one source on an entity — how a wrong auto-merge gets undone.
+      // Both report what actually happened: clues owned by the built-in table cannot be moved,
+      // so a silent success would leave the UI claiming something it did not do.
+      'tag-lexicon:move-source': (params: TagLexiconMoveSourceParams) => TagLexiconMoveSourceResult
+      'tag-lexicon:remove-source': (
+        params: TagLexiconRemoveSourceParams
+      ) => TagLexiconRemoveSourceResult
+      // One-shot migration: rewrite every game's stored tag strings into lexicon keys.
+      'tag-lexicon:migrate-game-tags': (
+        params: TagLexiconMigrateGameTagsParams
+      ) => GameTagMigrationResult
+      'tag-lexicon:reload': () => void
+      'tag-lexicon:export': (params: TagLexiconExportParams) => TagLexiconExportResult
+      'tag-lexicon:import': (params: TagLexiconImportParams) => TagLexiconImportResult
 
       // Updater events
       'updater:check-update': () => UpdateCheckResult | null
@@ -358,6 +431,18 @@ type MainIpcEvents =
       }
       'scanner:request-progress': () => OverallScanProgress
       'scanner:ignore-failed-folder': (scannerId: string, folderPath: string) => OverallScanProgress
+
+      // Version-conflict workbench (scanned folders + duplicate library entries)
+      'version-review:list': () => VersionReviewSummary[]
+      'version-review:get': (gameId: string) => VersionReviewDetail | null
+      'version-review:save': (payload: VersionReviewSavePayload) => VersionReviewSaveResult
+      'version-review:check-paths': (paths: string[]) => Record<string, boolean>
+      // Re-check one game's conflicts and delete the ones whose folder is gone.
+      'version-review:refresh': (gameId: string) => VersionReviewRefreshResult
+      // Processing log shown in the game properties dialog ("Records" tab).
+      'version-review:get-record': (gameId: string) => VersionReviewRecord
+      'version-review:remove-record': (gameId: string, entryId: string) => VersionReviewRecordResult
+      'version-review:clear-records': (gameId: string) => VersionReviewRecordResult
 
       // Plugin events
       'plugin:get-all-plugins': () => Omit<PluginInfo, 'instance'>[]
@@ -451,6 +536,13 @@ type RendererIpcEvents = {
   'scanner:scan-error': [progress: OverallScanProgress]
   'scanner:scan-paused': [progress: OverallScanProgress]
   'scanner:scan-resumed': [progress: OverallScanProgress]
+  // Pushed whenever a scan records a new version conflict or the workbench saves, so the sidebar
+  // badge can update and the user gets told there is something to review.
+  'version-conflict:changed': [reviews: VersionReviewSummary[]]
+  // Pushed when the number of *pending tag* conflicts changes (a scan hit a name collision, or the
+  // user dealt with one). The sidebar badge adds it to the version conflicts, so both kinds of
+  // "needs a decision" show up in one place.
+  'tag-lexicon:conflicts-changed': [pending: number]
 
   'adder:batch-update-game-metadata-progress': [progress: BatchUpdateGameMetadataProgress]
 

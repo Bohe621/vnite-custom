@@ -52,6 +52,26 @@ export function Metadata(): React.JSX.Element {
           </div>
 
           <div className={cn('space-y-4')}>
+            <div className={cn('border-b pb-2')}>{t('metadata.tagLexicon.title')}</div>
+            <div className={cn('space-y-4')}>
+              {/* Tag Lexicon Management Button */}
+              <ConfigItemPure
+                title={t('metadata.tagLexicon.manage')}
+                description={t('metadata.tagLexicon.manageDescription')}
+              >
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigate({ to: '/tag-lexicon' })
+                  }}
+                >
+                  {t('metadata.tagLexicon.manageButton')}
+                </Button>
+              </ConfigItemPure>
+            </div>
+          </div>
+
+          <div className={cn('space-y-4')}>
             <div className={cn('border-b pb-2')}>{t('metadata.storage.title')}</div>
             <div className={cn('space-y-4')}>
               <ConfigItem

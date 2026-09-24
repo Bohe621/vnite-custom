@@ -21,6 +21,10 @@
       "hideNSFW": "隐藏NSFW游戏",
       "onlyNSFW": "仅显示NSFW游戏"
     },
+    "nsfwCoverBlur": {
+      "on": "模糊NSFW封面：开",
+      "off": "模糊NSFW封面：关"
+    },
     "localGameFilter": {
       "all": "显示全部游戏",
       "hideLocal": "隐藏本地游戏",
@@ -34,7 +38,9 @@
     "lightMode": "亮色模式",
     "cloudSyncDisabled": "云同步未开启",
     "addGame": "添加游戏",
-    "settings": "设置"
+    "settings": "设置",
+    "versionConflicts": "版本冲突",
+    "conflicts": "冲突管理"
   },
   "adder": {
     "addGame": "添加游戏",

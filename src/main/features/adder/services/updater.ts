@@ -23,6 +23,7 @@ import { ipcManager } from '~/core/ipc'
 import { tryUpscaleGameImage } from '~/features/game'
 import { scraperManager } from '~/features/scraper'
 import { cacheDescriptionImages } from '~/features/scraper/services/descriptionImageCache'
+import { isUserAuthoredKey, mergeTagKeys } from './tagMerge'
 
 export async function batchUpdateGameMetadata({
   gameIds,
@@ -520,16 +521,15 @@ export async function updateGameMetadata({
     if (updateAll || fieldsToUpdate.includes('tags')) {
       // Check if baseMetadata already has tags
       if (baseMetadata.tags && baseMetadata.tags.length > 0) {
-        // If the primary data source already has tags, process them according to the merge strategy
-        if (mergeStrategy === 'replace' || !updatedMetadata.tags) {
-          updatedMetadata.tags = baseMetadata.tags
-        } else if (mergeStrategy === 'append') {
-          updatedMetadata.tags = [...(updatedMetadata.tags || []), ...baseMetadata.tags]
-        } else if (mergeStrategy === 'merge') {
-          updatedMetadata.tags = Array.from(
-            new Set([...(updatedMetadata.tags || []), ...baseMetadata.tags])
-          )
-        }
+        // 合并策略统一走 mergeTagKeys（`replace` 会保留用户自己写出来的标签、`append`
+        // 也去重），细节见那里的注释。旧的 `updatedMetadata.tags = baseMetadata.tags` 写法会把
+        // 用户手写的标签一并抹掉。
+        updatedMetadata.tags = mergeTagKeys(
+          updatedMetadata.tags,
+          baseMetadata.tags,
+          mergeStrategy,
+          isUserAuthoredKey
+        )
       } else {
         // If the primary data source does not have tags, it needs to be fetched
         needFetchSpecialFields.push('tags')
@@ -775,22 +775,16 @@ export async function updateGameMetadata({
         if (specialResultsMap.tags) {
           const tagsList = specialResultsMap.tags
           if (tagsList && tagsList.length > 0) {
-            if (mergeStrategy === 'replace' || !updatedMetadata.tags) {
-              // Use first available tag
-              updatedMetadata.tags = tagsList[0].tags
-            } else {
-              // Merge all sources' tags
-              const allTags = tagsList.flatMap((item) => item.tags)
-
-              if (mergeStrategy === 'append') {
-                updatedMetadata.tags = [...(updatedMetadata.tags || []), ...allTags]
-              } else {
-                // 'merge'
-                updatedMetadata.tags = Array.from(
-                  new Set([...(updatedMetadata.tags || []), ...allTags])
-                )
-              }
-            }
+            // replace 只取首选源的标签（把别的源也并进来不符合「替换」的语义）；
+            // append / merge 则把各源的标签都收下，交给 mergeTagKeys 去重
+            const incoming =
+              mergeStrategy === 'replace' ? tagsList[0].tags : tagsList.flatMap((item) => item.tags)
+            updatedMetadata.tags = mergeTagKeys(
+              updatedMetadata.tags,
+              incoming,
+              mergeStrategy,
+              isUserAuthoredKey
+            )
           }
         }
 

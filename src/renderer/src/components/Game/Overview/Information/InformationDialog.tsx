@@ -43,6 +43,7 @@ export function InformationDialog({
   )
   const [genres, setGenres, saveGenres] = useGameState(gameId, 'metadata.genres', true)
   const [platforms, setPlatforms, savePlatforms] = useGameState(gameId, 'metadata.platforms', true)
+  const [version, setVersion, saveVersion] = useGameState(gameId, 'metadata.version', true)
   const activeFieldRef = useRef<
     | 'originalName'
     | 'name'
@@ -52,6 +53,7 @@ export function InformationDialog({
     | 'releaseDate'
     | 'platforms'
     | 'genres'
+    | 'version'
     | null
   >(null)
 
@@ -83,6 +85,9 @@ export function InformationDialog({
           break
         case 'genres':
           await saveGenres()
+          break
+        case 'version':
+          await saveVersion()
           break
       }
     }
@@ -239,6 +244,20 @@ export function InformationDialog({
               <div className={cn('text-xs')}>{t('detail.overview.information.hints.genres')}</div>
             </TooltipContent>
           </Tooltip>
+          {/* Version */}
+          <div className={cn('whitespace-nowrap select-none justify-self-start')}>
+            {t('detail.overview.information.fields.version')}
+          </div>
+          <Input
+            value={version}
+            onChange={(e) => {
+              activeFieldRef.current = 'version'
+              setVersion(e.target.value)
+            }}
+            onBlur={saveVersion}
+            placeholder={t('detail.overview.information.empty')}
+            className={cn('text-sm')}
+          />
         </div>
       </DialogContent>
     </Dialog>

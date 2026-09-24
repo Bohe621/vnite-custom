@@ -9,6 +9,14 @@
     "gameListSettings": "游戏列表设置",
     "collapseAllGroups": "折叠所有分组",
     "groupBy": "分组依据",
+    "displayMode": {
+      "switchToGrid": "切换为海报显示",
+      "switchToList": "切换为列表显示"
+    },
+    "posterShape": {
+      "switchToWide": "切换为长图显示（主页列表）",
+      "switchToPortrait": "切换为竖图显示（主页列表）"
+    },
     "groups": {
       "none": "无分组",
       "collection": "收藏",
@@ -49,6 +57,9 @@
         "score": "评分",
         "storageSize": "游戏大小"
       }
+    },
+    "notInLibrary": {
+      "title": "不在库中的"
     },
     "playStatus": {
       "adjustOrder": "调整顺序"
@@ -286,7 +297,8 @@
           "publishers": "发行商",
           "releaseDate": "发行日期",
           "platforms": "平台",
-          "genres": "类型"
+          "genres": "类型",
+          "version": "版本号"
         },
         "empty": "暂无",
         "hints": {
@@ -336,7 +348,8 @@
         "rating": "我的评分",
         "neverRun": "从未运行",
         "storageSize": "游戏大小",
-        "storageSizeEmpty": "未计算"
+        "storageSizeEmpty": "未计算",
+        "gameDirectoryEmpty": "未设置"
       }
     },
     "memory": {
@@ -554,7 +567,58 @@
       "tabs": {
         "launcher": "运行",
         "path": "路径",
-        "media": "媒体"
+        "media": "媒体",
+        "record": "记录"
+      },
+      "record": {
+        "ignored": {
+          "title": "已忽略的目录",
+          "count": "{{count}} 个",
+          "empty": "还没有忽略过任何目录",
+          "hint": "被忽略的目录在下次扫描时会被跳过。删除某条记录即可让它重新参与扫描。",
+          "statusActive": "生效中",
+          "statusReleased": "已不在排除列表",
+          "remove": "删除这条记录，并让该目录重新参与扫描",
+          "clear": "全部清空",
+          "clearConfirm": {
+            "title": "清空忽略记录？",
+            "description": "共 {{count}} 个目录会从扫描排除列表移除，下次扫描时它们会重新被扫描，可能再次出现冲突提示。合并、采纳等记录会保留。"
+          }
+        },
+        "history": {
+          "title": "其它处理记录",
+          "empty": "还没有其它处理记录",
+          "remove": "删除这条记录"
+        },
+        "actions": {
+          "merge": "合并了 {{count}} 条重复条目：{{names}}",
+          "adopt": "把目录 {{directory}} 采纳为版本「{{name}}」"
+        },
+        "notifications": {
+          "removed": "已删除记录",
+          "cleared": "已清空处理记录",
+          "error": "操作失败：{{message}}"
+        }
+      },
+      "versions": {
+        "search": "搜索版本…",
+        "noResults": "没有找到版本",
+        "defaultName": "默认版本",
+        "unnamed": "未命名版本",
+        "create": "新建版本…",
+        "rename": "重命名…",
+        "delete": "删除此版本",
+        "createTitle": "新建版本",
+        "createDescription": "新版本会复制「{{source}}」的路径与启动配置，之后可以单独修改。",
+        "renameTitle": "重命名版本",
+        "namePlaceholder": "例如：v1.11、汉化版、无修版",
+        "deleteTitle": "删除版本「{{name}}」？",
+        "deleteDescription": "该版本的路径与启动配置会一并删除，此操作不可撤销。",
+        "deleteLaunchDescription": "这是当前的启动版本，删除后会切换到其他版本。该版本的路径与启动配置会一并删除，此操作不可撤销。",
+        "scope": {
+          "edit": "选择要编辑的版本。这里的选择不影响启动版本。",
+          "launch": "选择启动版本。点「开始游戏」时使用这一版的启动器与启动模式。"
+        }
       },
       "path": {
         "title": "游戏与存档",
@@ -744,6 +808,12 @@
         "platforms": "平台之间用英文逗号分隔",
         "genres": "类型之间用英文逗号分隔",
         "extraKey": "单次仅支持对一个附加信息进行修改"
+      },
+      "nsfw": {
+        "title": "NSFW 标记",
+        "keep": "不修改",
+        "add": "添加标记",
+        "remove": "移除标记"
       },
       "clearFields": "选择要清空的字段",
       "success": "已批量修改游戏信息",
