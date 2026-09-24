@@ -6,6 +6,7 @@ import type {
   LauncherPresetVariable
 } from '@appTypes/models'
 import { isBuiltInLauncherPresetId, LAUNCHER_PRESET_VARIABLES } from '@appTypes/models'
+import { applyActiveVersionMirror, deepClone, normalizeGameLocalDoc } from '@appUtils'
 import path from 'path'
 import { ConfigDBManager, GameDBManager } from '~/core/database'
 import { updateKnownGame } from '~/features/monitor/services/nativeMonitor'
@@ -184,10 +185,22 @@ function createNextLauncher(
 
 export async function applyLauncherPreset(
   presetId: string,
-  gameId: string
+  gameId: string,
+  versionId?: string
 ): Promise<LauncherPresetApplyResult> {
-  const gamePath = await GameDBManager.getGameLocalValue(gameId, 'path.gamePath')
-  if (!gamePath.trim()) {
+  // Presets are applied to one specific version — normally the one being edited in the
+  // properties dialog, falling back to the launch version.
+  const storedDoc = await GameDBManager.getGameLocal(gameId)
+  const doc: gameLocalDoc = deepClone(storedDoc)
+  normalizeGameLocalDoc(doc, {
+    defaultVersionName: (await GameDBManager.getGameValue(gameId, 'metadata.version')).trim()
+  })
+
+  const targetVersionId =
+    versionId && doc.versions[versionId] ? versionId : doc.currentVersionId
+  const targetVersion = doc.versions[targetVersionId]
+  const gamePath = (targetVersion?.path.gamePath ?? '').trim()
+  if (!gamePath) {
     throw new Error('Game path not set')
   }
 
@@ -203,12 +216,9 @@ export async function applyLauncherPreset(
     return { status: 'missing-steam-id' }
   }
 
-  const currentLauncher = await GameDBManager.getGameLocalValue(gameId, 'launcher')
-  await GameDBManager.setGameLocalValue(
-    gameId,
-    'launcher',
-    createNextLauncher(currentLauncher, resolvedPreset)
-  )
+  targetVersion.launcher = createNextLauncher(targetVersion.launcher, resolvedPreset)
+  applyActiveVersionMirror(doc)
+  await GameDBManager.setGameLocal(gameId, doc)
   await updateKnownGame(gameId)
 
   return { status: 'applied' }

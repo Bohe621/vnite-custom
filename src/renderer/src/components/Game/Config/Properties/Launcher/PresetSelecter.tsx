@@ -19,7 +19,7 @@ import {
 } from '@ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@ui/popover'
 import { ipcManager } from '~/app/ipc'
-import { useConfigLocalState } from '~/hooks'
+import { useConfigLocalState, useGameVersionScope } from '~/hooks'
 import { useConfigTabStore } from '~/pages/Config/store'
 import { cn } from '~/utils'
 import { SteamIdDialog, useSteamIdDialogStore } from './SteamIdDialog'
@@ -35,6 +35,8 @@ export function PresetSelecter({
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [customPresets] = useConfigLocalState('game.launcher.presets')
+  // Presets apply to the version currently being edited in the properties dialog.
+  const versionId = useGameVersionScope()
   const openSteamIdDialog = useSteamIdDialogStore((state) => state.openDialog)
   const setLastConfigTab = useConfigTabStore((state) => state.setLastConfigTab)
   const setPendingSection = useConfigTabStore((state) => state.setPendingSection)
@@ -42,7 +44,12 @@ export function PresetSelecter({
   async function applyPreset(presetId: string): Promise<void> {
     const toastId = toast.loading(t('detail.properties.launcher.preset.notifications.configuring'))
     try {
-      const result = await ipcManager.invoke('launcher:select-preset', presetId, gameId)
+      const result = await ipcManager.invoke(
+        'launcher:select-preset',
+        presetId,
+        gameId,
+        versionId ?? undefined
+      )
       if (result.status === 'missing-steam-id') {
         toast.dismiss(toastId)
         openSteamIdDialog(gameId, presetId)

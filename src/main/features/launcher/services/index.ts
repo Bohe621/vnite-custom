@@ -10,10 +10,11 @@ import { applyLauncherPreset } from './preset'
 
 export async function launcherPreset(
   presetId: string,
-  gameId: string
+  gameId: string,
+  versionId?: string
 ): Promise<LauncherPresetApplyResult> {
   try {
-    return await applyLauncherPreset(presetId, gameId)
+    return await applyLauncherPreset(presetId, gameId, versionId)
   } catch (error) {
     log.error(`[Launcher] Failed to set preset for ${gameId}`, error)
     throw error

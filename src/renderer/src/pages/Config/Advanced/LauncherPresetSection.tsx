@@ -1,6 +1,18 @@
-import { useState } from 'react'
+import {
+  attachClosestEdge,
+  extractClosestEdge
+} from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge'
+import { getReorderDestinationIndex } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/get-reorder-destination-index'
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
+import {
+  draggable,
+  dropTargetForElements,
+  monitorForElements
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useEffect, useRef, useState } from 'react'
 
 import type { LauncherPreset, LauncherPresetMonitorMode } from '@appTypes/models'
 import { LAUNCHER_PRESET_VARIABLES } from '@appTypes/models'
@@ -49,7 +61,41 @@ export function LauncherPresetSection(): React.JSX.Element {
   )
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  // Presets grow and shrink while mounted; the drop handler below is registered once,
+  // so it reads the latest value/setter through refs instead of a stale closure.
+  const presetsRef = useRef(presets)
+  presetsRef.current = presets
+  const setPresetsAndSaveRef = useRef(setPresetsAndSave)
+  setPresetsAndSaveRef.current = setPresetsAndSave
+
   const selectedPreset = presets.find((preset) => preset.id === selectedId)
+
+  useEffect(() => {
+    return combine(
+      monitorForElements({
+        canMonitor({ source }) {
+          return source.data.scenario === 'launcher-presets'
+        },
+        onDrop({ location, source }) {
+          const current = presetsRef.current
+          const startIndex = current.findIndex((preset) => preset.id === source.data.id)
+          const target = location.current.dropTargets[0]
+          if (startIndex === -1 || !target) return
+
+          const indexOfTarget = current.findIndex((preset) => preset.id === target.data.id)
+          const finishIndex = getReorderDestinationIndex({
+            startIndex,
+            indexOfTarget,
+            closestEdgeOfTarget: extractClosestEdge(target.data),
+            axis: 'vertical'
+          })
+          if (finishIndex === startIndex) return
+
+          void setPresetsAndSaveRef.current(reorder({ list: current, startIndex, finishIndex }))
+        }
+      })
+    )
+  }, [])
 
   function updateSelectedPreset(
     updater: (preset: LauncherPreset) => LauncherPreset,
@@ -187,20 +233,12 @@ export function LauncherPresetSection(): React.JSX.Element {
               <div className="space-y-1 p-2.5 select-none">
                 {presets.length > 0 ? (
                   presets.map((preset) => (
-                    <button
+                    <PresetListItem
                       key={preset.id}
-                      type="button"
-                      className={cn(
-                        'flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent/50',
-                        selectedId === preset.id &&
-                          'bg-accent/70 text-accent-foreground shadow-sm ring-1 ring-border/50'
-                      )}
-                      onClick={() => setSelectedId(preset.id)}
-                    >
-                      <span className="min-w-0 flex-1 truncate">
-                        {preset.name || t('advanced.launcherPresets.unnamedPreset')}
-                      </span>
-                    </button>
+                      preset={preset}
+                      isSelected={selectedId === preset.id}
+                      onSelect={setSelectedId}
+                    />
                   ))
                 ) : (
                   <div className="px-2 py-3 text-xs text-muted-foreground">
@@ -390,5 +428,58 @@ export function LauncherPresetSection(): React.JSX.Element {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+type PresetListItemProps = {
+  preset: LauncherPreset
+  isSelected: boolean
+  onSelect: (id: string) => void
+}
+
+function PresetListItem({ preset, isSelected, onSelect }: PresetListItemProps): React.JSX.Element {
+  const { t } = useTranslation('config')
+  const ref = useRef<HTMLButtonElement | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+
+    return combine(
+      draggable({
+        element,
+        getInitialData: () => ({ id: preset.id, scenario: 'launcher-presets' }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false)
+      }),
+      // `getData` runs on every pointer move, so the drop handler reads a fresh
+      // closest-edge (top/bottom) that decides whether we insert above or below.
+      dropTargetForElements({
+        element,
+        getData: ({ input }) =>
+          attachClosestEdge(
+            { id: preset.id, scenario: 'launcher-presets' },
+            { element, input, allowedEdges: ['top', 'bottom'] }
+          )
+      })
+    )
+  }, [preset.id])
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={cn(
+        'flex w-full cursor-grab items-center rounded-lg px-3 py-2 text-left text-sm transition-[background-color,opacity] hover:bg-accent/50 active:cursor-grabbing',
+        isDragging && 'opacity-50',
+        isSelected && 'bg-accent/70 text-accent-foreground shadow-sm ring-1 ring-border/50'
+      )}
+      onClick={() => onSelect(preset.id)}
+    >
+      <span className="min-w-0 flex-1 truncate">
+        {preset.name || t('advanced.launcherPresets.unnamedPreset')}
+      </span>
+    </button>
   )
 }
