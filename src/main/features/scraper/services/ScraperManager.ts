@@ -15,6 +15,7 @@ import {
 } from '@appTypes/utils'
 import { withTimeout } from '~/utils'
 import { Transformer } from '~/features/transformer'
+import { TagLexiconManager } from '~/features/tagLexicon/services'
 import log from 'electron-log/main'
 
 export class ScraperManager {
@@ -96,10 +97,50 @@ export class ScraperManager {
         throw new Error(`Provider '${providerId}' does not support getting game metadata`)
       }
       const metadata = await provider.getGameMetadata(identifier)
-      return Transformer.transformMetadata(metadata, '#all')
+      const normalized = await this.normalizeMetadataTags(metadata, providerId)
+      return Transformer.transformMetadata(normalized, '#all')
     } catch (error) {
       log.error(`[Scraper] Failed to get game metadata using provider '${providerId}': ${error}`)
       throw error
+    }
+  }
+
+  /**
+   * 把 provider 返回的标签统一过一遍词库：解析成实体 key，没见过的现场铸造。
+   *
+   * 集中在这层做，让「同一标签跨源归并」只由一处负责：各源的写法先试命中同一实体，命中不了
+   * 才各自成新实体。归并的钥匙两档（按可靠性）：① `tagsDetail.ids` 的**源内稳定 id**（DLsite
+   * `genre:288`）——唯一能跨语言归并的办法（文本随 `?locale=` 变，纯文本串不起来）；② 文本本身
+   * （全语言名字索引，适用于文本稳定的源）。登记语言优先取 `tagsDetail.language`，否则按 provider
+   * 名推断。
+   *
+   * ⚠️ `tagsDetail` 是中间数据，返回前必须剥掉，否则会写进游戏文档；词库兜住异常、退回原始标签。
+   */
+  private async normalizeMetadataTags(
+    metadata: GameMetadata,
+    providerId: string
+  ): Promise<GameMetadata> {
+    const tags = metadata.tags
+    // 无论后面走哪条分支，明细都不能留在返回值里 —— 它不是游戏元数据的一部分
+    const { tagsDetail, ...clean } = metadata
+    const idByRaw = new Map<string, string>()
+    for (const item of tagsDetail?.ids ?? []) {
+      if (item?.raw && item.id) idByRaw.set(item.raw, item.id)
+    }
+
+    if (!tags || tags.length === 0) return clean
+
+    try {
+      const keys = await TagLexiconManager.getInstance().ensureTags(
+        tags,
+        providerId,
+        tagsDetail?.language,
+        idByRaw.size > 0 ? idByRaw : undefined
+      )
+      return { ...clean, tags: keys }
+    } catch (error) {
+      log.error(`[Scraper] Failed to normalize tags from '${providerId}': ${error}`)
+      return clean
     }
   }
 

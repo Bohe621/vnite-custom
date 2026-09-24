@@ -1,9 +1,9 @@
 {
   "dlsite": {
-    "workType": "",
-    "releaseDate": "",
-    "series": "",
-    "maker": ""
+    "workType": "Formato dell'opera.",
+    "releaseDate": "Data di rilascio",
+    "series": "Serie",
+    "maker": "Circolo nome"
   },
   "steam": {
     "officialWebsite": "",

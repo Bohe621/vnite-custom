@@ -19,6 +19,8 @@ import path from 'path'
 import { z } from 'zod'
 import { ConfigDBManager } from '~/core/database'
 import { GameDBManager } from '~/core/database'
+import { getTagLanguage } from '~/features/system/services/i18n'
+import { isInternalKey, TagLexiconManager } from '~/features/tagLexicon/services'
 
 export class Transformer {
   static async transformMetadata(
@@ -74,7 +76,6 @@ export class Transformer {
         )
         this.applyProcessorRules(transformedMetadata, 'platforms', transformer.processors.platforms)
         this.applyProcessorRules(transformedMetadata, 'genres', transformer.processors.genres)
-        this.applyProcessorRules(transformedMetadata, 'tags', transformer.processors.tags)
 
         // Process extra fields (director, scenario, illustration, music, engine, etc.)
         if (transformedMetadata.extra) {
@@ -83,6 +84,15 @@ export class Transformer {
             transformer.processors
           )
         }
+      }
+
+      // 标签规则单独跑（不能用 applyProcessorRules）：库里存的是实体 key，而规则是按
+      // 人看得懂的名字写的 —— 详见 transformTagValues 的注释。
+      if (transformedMetadata.tags) {
+        transformedMetadata.tags = await this.transformTagValues(
+          transformedMetadata.tags,
+          activeTransformers
+        )
       }
 
       return transformedMetadata
@@ -110,30 +120,11 @@ export class Transformer {
       const transformedTags: GameTagsList = JSON.parse(JSON.stringify(tags))
 
       // Apply rules from all transformers
-      for (const transformer of transformerList) {
-        // Process tags array
-        for (const tagSource of transformedTags) {
-          if (tagSource.tags && Array.isArray(tagSource.tags)) {
-            tagSource.tags = tagSource.tags
-              .map((tag) => {
-                let transformedTag = tag
-                if (transformer.processors.tags) {
-                  for (const rule of transformer.processors.tags) {
-                    for (const pattern of rule.match) {
-                      transformedTag = transformedTag.replace(
-                        new RegExp(pattern, 'g'),
-                        rule.replace
-                      )
-                    }
-                  }
-                }
-                return transformedTag === '' ? null : transformedTag
-              })
-              // Filter out empty values
-              .filter(
-                (tag: string | null) => tag !== null && tag !== undefined && tag !== ''
-              ) as string[]
-          }
+      for (const tagSource of transformedTags) {
+        if (tagSource.tags && Array.isArray(tagSource.tags)) {
+          // 候选列表里的标签同样是**实体 key**（`getGameTagsList` 走的是 `getGameMetadata`），
+          // 所以和 `transformMetadata` 用同一个「按名字匹配、按 key 落库」的实现
+          tagSource.tags = await this.transformTagValues(tagSource.tags, transformerList)
         }
       }
 
@@ -575,6 +566,74 @@ export class Transformer {
       log.error('[Transformer] Error transforming information list:', error)
       throw error
     }
+  }
+
+  /**
+   * 标签规则的「按名字匹配、按 key 落库」。不能直接跑 `applyProcessorRules`：库里存的是**实体
+   * key**，规则却按人看得懂的名字写（`有音乐` / `音声あり`），正则跑 key 上永远命中不了。
+   *
+   * 做法：把 key 展开成各语言显示名（当前语言优先）匹配，命中就把产出重新过一遍词库
+   * （认得出归并已有实体，认不出按 `user` 铸一条，同「详情页手写标签」一条路）。
+   *
+   * ⚠️ **没被规则改到的值原样保留**——占绝大多数，不能顺手重编码，否则一次批量应用会把全库
+   * key 重铸一遍（筛选全断）。非 key 的老数据按老行为直接跑正则。
+   */
+  private static async transformTagValues(
+    values: readonly string[],
+    transformers: configDocs['metadata']['transformer']['list']
+  ): Promise<string[]> {
+    const lexicon = TagLexiconManager.getInstance()
+    const lang = getTagLanguage()
+    const next: (string | null)[] = []
+    /** 槽位 -> 规则产出的新写法，最后统一过一次词库（一批只落盘/重建一次索引） */
+    const rewritten = new Map<number, string>()
+
+    values.forEach((value, index) => {
+      if (typeof value !== 'string' || value === '') {
+        next[index] = null
+        return
+      }
+
+      const names = isInternalKey(value) ? lexicon.displayNames(value, lang) : [value]
+      let produced: string | null = null
+      for (const name of names) {
+        let candidate = name
+        for (const transformer of transformers) {
+          for (const rule of transformer.processors?.tags ?? []) {
+            for (const pattern of rule.match) {
+              candidate = candidate.replace(new RegExp(pattern, 'g'), rule.replace)
+            }
+          }
+        }
+        // 只看「真的被改动」的结果：某个语言的名字没命中就试下一个
+        if (candidate !== name) {
+          produced = candidate
+          break
+        }
+      }
+
+      if (produced === null) {
+        next[index] = value
+        return
+      }
+      if (produced === '') {
+        // 规则把标签整个删掉了（replace 成空串）
+        next[index] = null
+        return
+      }
+      next[index] = value
+      rewritten.set(index, produced)
+    })
+
+    if (rewritten.size > 0) {
+      const keys = await lexicon.ensureTags([...rewritten.values()], 'user', lang)
+      let cursor = 0
+      for (const index of rewritten.keys()) {
+        next[index] = keys[cursor++] ?? next[index]
+      }
+    }
+
+    return next.filter((item): item is string => typeof item === 'string' && item !== '')
   }
 
   private static applyProcessorRules(

@@ -18,6 +18,7 @@ export async function i18nInit(): Promise<void> {
     'record',
     'scanner',
     'transformer',
+    'tagLexicon',
     'databaseInspector'
   ]
 

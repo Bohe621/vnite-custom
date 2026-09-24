@@ -4,10 +4,11 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Card } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { GameTagsList } from '@appTypes/utils'
 import { useTranslation } from 'react-i18next'
+import { useTagDisplay } from '~/hooks'
 import { ipcManager } from '~/app/ipc'
 
 interface SearchTagsDialogProps {
@@ -30,6 +31,10 @@ export function SearchTagsDialog({
   const [tagsList, setTagsList] = useState<GameTagsList>([])
   const [selectedTags, setSelectedTags] = useState<string[]>(initialTags)
   const [isLoading, setIsLoading] = useState(false)
+
+  // 候选标签是实体 key，勾选状态与写库值都用 key，只有渲染出来的文字查译名
+  const allTags = useMemo(() => tagsList.flatMap((source) => source.tags), [tagsList])
+  const tagDisplay = useTagDisplay(allTags)
 
   useEffect(() => {
     setSearchTitle(gameTitle)
@@ -129,7 +134,7 @@ export function SearchTagsDialog({
                               : 'bg-muted'
                           )}
                         >
-                          {tag}
+                          {tagDisplay[tag] ?? tag}
                         </label>
                       </div>
                     ))}

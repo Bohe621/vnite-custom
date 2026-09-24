@@ -1,0 +1,142 @@
+{
+  "title": "Tag lexicon",
+  "description": "Tag master data: one entity per tag, where the key is an internal stable identifier kept separate from display names. The database stores keys and the UI resolves them against the current language, so switching languages never affects filtering. You can edit the lexicon file directly and press \"Reload\" to apply it; names you have not customized come from the built-in table. The list is filtered by the selected editing language: by default only entities that already have a name in that language are shown; switch the scope to \"Missing … name\" to fill in translations.",
+  "status": {
+    "file": "Lexicon file",
+    "language": "Editing language",
+    "tags": "Entities",
+    "user": "Customized",
+    "merged": "Merged",
+    "fallback": "Fallback chain",
+    "coverage": "{{lang}}: {{count}} of {{total}} have a name"
+  },
+  "scope": {
+    "label": "List scope",
+    "all": "All entities",
+    "withName": "Has {{lang}} name",
+    "missingName": "Missing {{lang}} name"
+  },
+  "actions": {
+    "reload": "Reload",
+    "import": "Import",
+    "export": "Export",
+    "rowActions": "More actions",
+    "merge": "Merge into…",
+    "moveSource": "Fix index…",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "saving": "Working…",
+    "migrate": "Convert stored tags"
+  },
+  "search": {
+    "placeholder": "Search key, translation or raw source string"
+  },
+  "probe": {
+    "placeholder": "Paste a raw tag returned by a source, press Enter to see which entity it resolves to",
+    "miss": "No match → a new entity will be created on scan"
+  },
+  "list": {
+    "source": "Source",
+    "sourceUser": "Custom",
+    "sourceBuiltin": "Built-in",
+    "noSource": "No source recorded",
+    "noTranslation": "Not translated",
+    "empty": "No matching entities",
+    "hint": "{{total}} in total, showing the first {{shown}}; type a keyword to narrow down"
+  },
+  "notifications": {
+    "saved": "Saved",
+    "deleted": "Entity deleted",
+    "reloaded": "Lexicon reloaded",
+    "exportSuccess": "Exported to {{path}}",
+    "importSuccess": "Import finished: {{added}} added, {{updated}} updated",
+    "canceled": "Canceled",
+    "loadError": "Failed to read the lexicon"
+  },
+  "picker": {
+    "searchPlaceholder": "Search key, name or source string",
+    "loading": "Loading…",
+    "empty": "No matching entry",
+    "selected": "Selected: {{name}}",
+    "none": "No target entry picked yet"
+  },
+  "merge": {
+    "title": "Merge \"{{name}}\" into another entry",
+    "description": "Every name and source clue of this entry moves into the target, and its own key becomes a redirect (existing game data keeps resolving). Use it when this entry should not exist on its own; if only a source points at the wrong place, use \"Fix index\".\nNote: a language can only have one display name. When both sides have one, pick a target and then choose \"Keep\" or \"Overwrite\" per language in the \"Name preview\" (\"Keep\" by default).",
+    "targetPlaceholder": "Pick the entry to merge into",
+    "confirm": "Merge",
+    "preview": {
+      "title": "Name preview (after merging)",
+      "gained": "added from this entry",
+      "keepCustom": "Change to",
+      "customPlaceholder": "Type the name to use for this language",
+      "supersededWarn": "{{count}} language(s) have more than one spelling: \"Keep\" uses the current one, \"Overwrite\" switches to another entry's spelling; a struck-out one is dropped. Change any of them above.",
+      "ownerTarget": "the target",
+      "ownerSource": "this entry",
+      "ownerSourceN": "source {{index}}",
+      "ownerTag": "({{owner}})",
+      "ownerJoiner": ", ",
+      "keep": "Keep",
+      "overwrite": "Overwrite",
+      "overwriteOwner": "Overwrite ({{owner}})"
+    },
+    "notification": {
+      "merged": "Merged",
+      "failed": "Failed to merge",
+      "mergedMulti": "Merged {{count}} entries"
+    },
+    "titleMulti": "Merge the {{count}} selected entries into one",
+    "target": "Merge into",
+    "descriptionMulti": "The names and source indexes of the selected entries move into the target, and each of the others gets its own redirect (existing game data keeps resolving).\nPick which one is the target above (the last one you clicked by default). A language can only have one display name, so when a language has more than one spelling, choose \"Keep\" or \"Overwrite\" per language in the \"Name preview\" (\"Keep\" by default)."
+  },
+  "move": {
+    "title": "Fix source index",
+    "description": "Repoints the selected source index of \"{{name}}\" at the correct entry. Both entries stay; scanning that source resolves to the target from now on.",
+    "sources": "Source index to fix (per source, as a block)",
+    "noSources": "This entry has no source index left to fix: it may already have been fixed or detached, or it all comes from the built-in table.",
+    "loading": "Reading source clues…",
+    "namesStayHint": "Fixing the index only moves source entries — translations stay on this entry. If the target is missing a language, add it by hand on the lexicon page.",
+    "target": "Target entry",
+    "targetPlaceholder": "Pick the entry the index should point to",
+    "confirm": "Fix",
+    "detach": "Just detach",
+    "notification": {
+      "moved": "Repointed {{count}} source(s) to \"{{name}}\"",
+      "detached": "Detached {{count}} source(s)",
+      "failed": "The operation failed",
+      "builtinOnly": "These sources come from the built-in lexicon and cannot be changed: it is authoritative code data and would be restored on the next refresh.",
+      "partiallyBlocked": "{{count}} of them come from the built-in lexicon; only the part in your own lexicon was moved.",
+      "shellHint": "\"{{name}}\" no longer has any source clue — you can delete it or merge it elsewhere."
+    }
+  },
+  "migrate": {
+    "title": "Convert stored tags into keys",
+    "description": "Old tags in the library still hold the raw text from the scrape, while filtering matches the stored value exactly — so \"new data holding a key\" and \"old data holding text\" are two different values to a filter. This rewrites the raw text into tag keys: what the lexicon recognises is merged into the existing tag, the rest can be added as new tags.",
+    "previewing": "Measuring the impact…",
+    "previewFailed": "Failed to measure the impact",
+    "stat": {
+      "games": "Games with tags {{count}}",
+      "changing": "Will change {{count}}",
+      "values": "Tag values {{count}}",
+      "alreadyKey": "Already keys {{count}}",
+      "resolved": "Can be merged {{count}}",
+      "unknown": "Unrecognised {{count}}"
+    },
+    "mintUnknown": "Add the unrecognised ones as new tags",
+    "mintUnknownHint": "Checked, they become {{count}} user tags named after the raw text; a later scan of a similar tag lands in the conflict centre for you to merge. Unchecked, they stay exactly as they are.",
+    "unknownTop": "Most frequent unrecognised values:",
+    "samples": "Samples (top = before, bottom = after)",
+    "willChange": "{{count}} tag values will be rewritten. This writes straight into the game documents — back up the database first.",
+    "confirm": "Convert",
+    "notification": {
+      "done": "Converted: {{games}} games, {{resolved}} merged, {{minted}} new",
+      "failed": "Conversion failed"
+    }
+  },
+  "selection": {
+    "count": "{{count}} selected",
+    "merge": "Merge…",
+    "clear": "Clear",
+    "needMore": "Select at least two entries to merge"
+  }
+}

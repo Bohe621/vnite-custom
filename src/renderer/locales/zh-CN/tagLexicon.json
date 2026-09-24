@@ -1,0 +1,142 @@
+{
+  "title": "标签词库",
+  "description": "标签主数据：一个标签一个 key，和显示名分开存 —— 库里存 key，界面按当前语言显示，所以切换语言不影响筛选。词库文件可以直接编辑，改完点「重新载入」；没自定义的译名来自内置表。列表按「编辑语言」过滤，默认只列该语言已有译名的标签，要补译名请把范围切到「缺少…译名」。",
+  "status": {
+    "file": "词库文件",
+    "language": "编辑语言",
+    "tags": "有效标签",
+    "user": "已自定义",
+    "merged": "已合并",
+    "fallback": "回退链",
+    "coverage": "{{lang}} 已有译名 {{count}} / {{total}} 条"
+  },
+  "scope": {
+    "label": "列表范围",
+    "all": "全部标签",
+    "withName": "已有 {{lang}} 译名",
+    "missingName": "缺少 {{lang}} 译名"
+  },
+  "actions": {
+    "reload": "重新载入",
+    "import": "导入",
+    "export": "导出",
+    "rowActions": "更多操作",
+    "merge": "合并到…",
+    "moveSource": "修正索引…",
+    "delete": "删除",
+    "cancel": "取消",
+    "saving": "处理中…",
+    "migrate": "转换已有标签"
+  },
+  "search": {
+    "placeholder": "搜索 key、译名或抓取源原始串"
+  },
+  "probe": {
+    "placeholder": "粘贴抓取源返回的标签原文，回车试算会归到哪个标签",
+    "miss": "未命中 → 扫描时会新建标签"
+  },
+  "list": {
+    "source": "来源",
+    "sourceUser": "自定义",
+    "sourceBuiltin": "内置",
+    "noSource": "无来源记录",
+    "noTranslation": "未翻译",
+    "empty": "没有匹配的标签",
+    "hint": "共 {{total}} 条，当前显示前 {{shown}} 条，输入关键词可缩小范围"
+  },
+  "notifications": {
+    "saved": "已保存",
+    "deleted": "已删除该标签",
+    "reloaded": "词库已重新载入",
+    "exportSuccess": "已导出到 {{path}}",
+    "importSuccess": "导入完成：新增 {{added}} 条，更新 {{updated}} 条",
+    "canceled": "已取消",
+    "loadError": "读取词库失败"
+  },
+  "picker": {
+    "searchPlaceholder": "搜索 key、译名或抓取源原始串",
+    "loading": "加载中…",
+    "empty": "没有匹配的标签",
+    "selected": "已选：{{name}}",
+    "none": "尚未选择目标标签"
+  },
+  "merge": {
+    "title": "把「{{name}}」合并到另一个标签",
+    "description": "这条标签的全部译名与来源线索会并入目标标签，它自己的 key 写一条重定向（游戏数据照样能解析）。适合「这条压根不该单独存在」的情况；只是来源指错了地方，请用「修正索引」。\n注意：一个语言只能有一个显示名，两边都有时选完目标可以在「译名预览」里逐个选「保留」还是「覆盖」（默认「保留」）。",
+    "targetPlaceholder": "选择要并入的标签",
+    "confirm": "合并",
+    "preview": {
+      "title": "译名预览（合并后）",
+      "gained": "目标缺，本条补上",
+      "keepCustom": "修改为",
+      "customPlaceholder": "输入这个语言要用的译名",
+      "supersededWarn": "{{count}} 个语言的写法不一致：「保留」用它原有的写法，「覆盖」改成别的标签的写法；划掉的那个不会保留。上面可以逐语言改。",
+      "ownerTarget": "目标",
+      "ownerSource": "本条",
+      "ownerSourceN": "本条{{index}}",
+      "ownerTag": "（{{owner}}）",
+      "ownerJoiner": "、",
+      "keep": "保留",
+      "overwrite": "覆盖",
+      "overwriteOwner": "覆盖（{{owner}}）"
+    },
+    "notification": {
+      "merged": "已合并",
+      "failed": "合并失败",
+      "mergedMulti": "已合并 {{count}} 条"
+    },
+    "titleMulti": "把选中的 {{count}} 条并成一条",
+    "target": "合并到",
+    "descriptionMulti": "选中标签的译名与来源索引会并入目标标签，其余各条各写一条重定向（游戏数据照样能解析）。\n并到哪一条可以在上面改（默认最后点选的那条）。一个语言只能有一个显示名，同一个语言有多个写法时，在「译名预览」里逐个选「保留」还是「覆盖」（默认「保留」）。"
+  },
+  "move": {
+    "title": "修正索引",
+    "description": "把「{{name}}」上选中的来源索引改到正确的标签。两个标签都保留，以后扫描这个源会落到目标标签上。",
+    "sources": "要修正的来源索引（按源整块移动）",
+    "noSources": "这条标签没有可修正的来源索引了：可能之前修正 / 断开过，或者这些索引全部来自内置表。",
+    "loading": "读取来源线索…",
+    "namesStayHint": "修正索引只动来源索引、不动译名 —— 这条标签的译名会留在它自己身上。目标标签缺某语言的译名时，到标签词库页手工填。",
+    "target": "目标标签",
+    "targetPlaceholder": "选择索引要改到哪个标签",
+    "confirm": "修正",
+    "detach": "直接断开",
+    "notification": {
+      "moved": "已把 {{count}} 个来源的索引改到「{{name}}」",
+      "detached": "已断开 {{count}} 个来源",
+      "failed": "操作失败",
+      "builtinOnly": "这些来源由内置词库提供，改不动：内置表是代码里的权威数据，改了也会在下次刷新时恢复。",
+      "partiallyBlocked": "其中 {{count}} 个来源由内置词库提供，只挪走了用户词库里的那部分。",
+      "shellHint": "「{{name}}」已经没有任何来源线索了，可以把它删掉或合并到别处。"
+    }
+  },
+  "migrate": {
+    "title": "把已有标签转换成 key",
+    "description": "游戏库里的老标签存的是抓取当时的原文，而筛选是精确匹配存储值的 —— 于是「存 key 的新数据」和「存原文的老数据」在筛选里是两个不同的值。这个动作把老原文换成标签 key：认得出的归并到已有标签，认不出的可以新增为标签。",
+    "previewing": "正在统计影响面…",
+    "previewFailed": "统计失败",
+    "stat": {
+      "games": "有标签的游戏 {{count}}",
+      "changing": "会变化 {{count}}",
+      "values": "标签值 {{count}}",
+      "alreadyKey": "已是 key {{count}}",
+      "resolved": "可归并 {{count}}",
+      "unknown": "认不出 {{count}}"
+    },
+    "mintUnknown": "把认不出的也新增为标签",
+    "mintUnknownHint": "勾选后它们会成为 {{count}} 个用户标签（名字就是原文），以后扫描到同类标签会进「冲突管理」让你决定是否合并；不勾选则原样保留。",
+    "unknownTop": "认不出的值里出现最多的：",
+    "samples": "样例（上=原文，下=转换后）",
+    "willChange": "确认后会有 {{count}} 个标签值被改写。此操作直接改游戏文档，建议先备份数据库。",
+    "confirm": "开始转换",
+    "notification": {
+      "done": "转换完成：{{games}} 个游戏、归并 {{resolved}} 个、新增 {{minted}} 个",
+      "failed": "转换失败"
+    }
+  },
+  "selection": {
+    "count": "已选 {{count}} 条",
+    "merge": "合并…",
+    "clear": "取消选择",
+    "needMore": "再选一条才能合并"
+  }
+}

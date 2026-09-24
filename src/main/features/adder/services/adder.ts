@@ -27,6 +27,7 @@ import { scraperManager } from '~/features/scraper'
 import { cacheDescriptionImages } from '~/features/scraper/services/descriptionImageCache'
 import { getGameFolders, selectPathDialog, inferRootPath } from '~/utils'
 import { DlsiteFolderNameMetadata, parseDlsiteFolderName } from './dlsiteFolderName'
+import { isUserAuthoredKey, mergeTagKeys } from './tagMerge'
 
 export async function addGameToDB({
   dataSource,
@@ -233,7 +234,15 @@ export async function addGameToDB({
     }
 
     if (tags && tags.length > 0) {
-      metadata.tags = tags[0].tags
+      // 合并**所有**源的标签并去重，而不是只取 `tags[0]`（「第一个」由 provider 注册顺序决定，
+      // 不是用户意图）。落库的是实体 key（`getGameTagsList` 已归一）；`existing` 传 `undefined`
+      // 因为首次入库库里还没有标签。
+      metadata.tags = mergeTagKeys(
+        undefined,
+        tags.flatMap((item) => item.tags),
+        'merge',
+        isUserAuthoredKey
+      )
     }
 
     if (extra && Object.keys(extra).length > 0) {

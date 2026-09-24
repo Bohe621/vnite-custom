@@ -172,6 +172,8 @@ export async function getVNMetadata(vnId: string): Promise<GameMetadata> {
         ...(vn.extlinks?.map((link) => ({ label: link.label, url: link.url })) || []),
         { label: 'VNDB', url: `https://vndb.org/${formattedId}` }
       ],
+      // 返回 vndb 的原始英文标签名：中文译名与跨源归并统一交给 ScraperManager 的词库层，
+      // provider 自己不做翻译，避免「先翻译再反查」带来的译名歧义
       tags: vn.tags?.sort((a, b) => b.rating - a.rating).map((tag) => tag.name) ?? [],
       extra: staffData
     }
@@ -238,6 +240,8 @@ export async function getVNMetadataByName(vnName: string): Promise<GameMetadata>
         ...(vn.extlinks?.map((link) => ({ label: link.label, url: link.url })) || []),
         { label: 'VNDB', url: `https://vndb.org/${vn.id}` }
       ],
+      // 返回 vndb 的原始英文标签名：中文译名与跨源归并统一交给 ScraperManager 的词库层，
+      // provider 自己不做翻译，避免「先翻译再反查」带来的译名歧义
       tags: vn.tags?.sort((a, b) => b.rating - a.rating).map((tag) => tag.name) ?? [],
       extra: staffData
     }
