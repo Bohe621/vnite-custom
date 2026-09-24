@@ -44,10 +44,12 @@ export function GameNav({
   const [highlightLocalGames] = useConfigState('game.gameList.highlightLocalGames')
   const [gameNavStyle] = useConfigState('game.gameList.gameNavStyle')
   const [warnInvalidGamePaths] = useConfigState('game.gameList.warnInvalidGamePaths')
+  const [displayMode] = useConfigState('game.gameList.displayMode')
   const [nsfw] = useGameState(gameId, 'apperance.nsfw')
   const [nsfwBlurLevel] = useConfigState('appearances.nsfwBlurLevel')
   const [by] = useConfigState('game.gameList.sort.by')
   const isDarkMode = useTheme().isDark
+  const isGrid = displayMode === 'grid'
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -68,6 +70,40 @@ export function GameNav({
   const stringToBase64 = (str: string): string =>
     btoa(String.fromCharCode(...new TextEncoder().encode(str)))
   const obfuscatedGameName = stringToBase64(gameName).slice(0, gameName.length)
+
+  // The game name as it should be rendered (blurred NSFW titles are obfuscated)
+  const isTitleObfuscated = nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImageAndTitle
+  const displayName = isTitleObfuscated ? obfuscatedGameName : gameName
+
+  // Formatted value of the current sort field; shared by the row layout and the poster layout
+  const formatSortInfo = (): string | null => {
+    if (groupId === 'recentGames') return null
+    if (by === 'record.playTime' && playTime > 0) return formatDurationCompact(playTime)
+    if (by === 'record.score' && score !== -1) return score.toFixed(1)
+    if (by === 'record.storageSize' && storageSize >= 0) return formatStorageSize(storageSize)
+    return null
+  }
+
+  // The local game flag (valid path / invalid path), shared by both layouts
+  const buildLocalFlag = (size: string): React.ReactNode => {
+    if (gamePath && isPathValid) {
+      return (
+        <span
+          key={`${gameId}-local-flag-valid`}
+          className={cn('icon-[mdi--check-outline]', size)}
+        />
+      )
+    }
+    if (gamePath && !isPathValid && warnInvalidGamePaths) {
+      return (
+        <span
+          key={`${gameId}-local-flag-invalid`}
+          className={cn('icon-[mdi--alert-circle-outline] text-destructive', size)}
+        />
+      )
+    }
+    return null
+  }
 
   const handleDoubleClick = (event: React.MouseEvent): void => {
     event.preventDefault()
@@ -217,15 +253,13 @@ export function GameNav({
             ) : (
               <div key={`${gameId}-name`} className={cn('relative flex-1 min-w-0')}>
                 <span ref={nameDisplayRef} className={cn('block truncate')}>
-                  {nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImageAndTitle
-                    ? obfuscatedGameName
-                    : gameName}
+                  {displayName}
                 </span>
                 <span
                   ref={nameMeasureRef}
                   className="absolute invisible whitespace-nowrap pointer-events-none"
                 >
-                  {nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImageAndTitle
+                  {isTitleObfuscated
                     ? 'This is a deliberately long string to ensure the blurred NSFW game name is fully visible when hovered over.'
                     : gameName}
                 </span>
@@ -236,32 +270,13 @@ export function GameNav({
         }
 
         case 'sortInfo': {
-          if (groupId !== 'recentGames') {
-            if (by === 'record.playTime' && playTime > 0) {
-              navLayout.push(
-                <span
-                  key={`${gameId}-sort-playtime`}
-                  className="flex-shrink-0 text-muted-foreground"
-                >
-                  {formatDurationCompact(playTime)}
-                </span>
-              )
-            } else if (by === 'record.score' && score !== -1) {
-              navLayout.push(
-                <span key={`${gameId}-sort-score`} className="flex-shrink-0 text-muted-foreground">
-                  {score.toFixed(1)}
-                </span>
-              )
-            } else if (by === 'record.storageSize' && storageSize >= 0) {
-              navLayout.push(
-                <span
-                  key={`${gameId}-sort-storage`}
-                  className="flex-shrink-0 text-muted-foreground"
-                >
-                  {formatStorageSize(storageSize)}
-                </span>
-              )
-            }
+          const sortInfo = formatSortInfo()
+          if (sortInfo) {
+            navLayout.push(
+              <span key={`${gameId}-sort-info`} className="flex-shrink-0 text-muted-foreground">
+                {sortInfo}
+              </span>
+            )
           }
           break
         }
@@ -319,6 +334,108 @@ export function GameNav({
     return navLayout
   }
 
+  /**
+   * Poster layout used by the `grid` display mode: a portrait cover image with the
+   * game name underneath. Status/sort information is overlaid on the poster so the
+   * card stays compact in a narrow library bar.
+   */
+  const buildPosterLayout = (): React.ReactNode => {
+    const sortInfo = formatSortInfo()
+    const localFlag = buildLocalFlag('w-[10px] h-[10px]')
+
+    return (
+      <div className={cn('flex flex-col gap-1 w-full group/poster')}>
+        <div
+          className={cn(
+            'relative w-full aspect-[2/3] rounded-lg overflow-hidden',
+            'bg-accent/[calc(var(--glass-opacity)/2)]',
+            'ring-1 ring-border/60 transition-all duration-200',
+            isSelected ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary'
+          )}
+        >
+          <GameImage
+            gameId={gameId}
+            type="cover"
+            alt="cover"
+            blur={nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImage}
+            blurType="smallposter"
+            initialMask={true}
+            className={cn('w-full h-full object-cover')}
+            fallback={
+              <div
+                className={cn(
+                  'w-full h-full flex items-center justify-center bg-accent/[calc(var(--glass-opacity)/2)]'
+                )}
+              >
+                <span
+                  className={cn('icon-[mdi--gamepad-variant] w-5 h-5 text-muted-foreground')}
+                ></span>
+              </div>
+            }
+          />
+
+          {/* Local game flag */}
+          {localFlag && (
+            <span
+              className={cn(
+                'absolute top-1 left-1 z-10 p-0.5 rounded-full',
+                'flex items-center justify-center bg-background/60 backdrop-blur-sm shadow-sm'
+              )}
+            >
+              {localFlag}
+            </span>
+          )}
+
+          {/* Play status */}
+          {playStatus !== 'unplayed' && (
+            <span
+              className={cn(
+                'absolute top-1 right-1 z-10 p-0.5 rounded-full',
+                'flex items-center justify-center bg-background/60 backdrop-blur-sm shadow-sm'
+              )}
+            >
+              <span
+                className={cn(
+                  PLAY_STATUS_ICONS[playStatus],
+                  PLAY_STATUS_COLORS[playStatus],
+                  'w-[12px] h-[12px]'
+                )}
+              />
+            </span>
+          )}
+
+          {/* Sort info, revealed on hover */}
+          {sortInfo && (
+            <div
+              className={cn(
+                'absolute inset-x-0 bottom-0 flex justify-center pb-1',
+                'opacity-0 transition-opacity duration-200 group-hover/poster:opacity-100'
+              )}
+            >
+              <span
+                className={cn(
+                  'px-1.5 py-0.5 rounded-full text-[10px]',
+                  'bg-background/70 backdrop-blur-sm shadow-sm'
+                )}
+              >
+                {sortInfo}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <span
+          // Blurred NSFW titles must not leak through the native tooltip
+          title={isTitleObfuscated ? undefined : gameName}
+          // `whitespace-normal` overrides the `whitespace-nowrap` inherited from `Nav`
+          className={cn('text-xs leading-4 h-8 whitespace-normal line-clamp-2 break-all')}
+        >
+          {displayName}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <>
       <ContextMenu>
@@ -333,7 +450,11 @@ export function GameNav({
               ref={navRef}
               variant="gameList"
               className={cn(
-                'text-xs p-3 h-5 rounded-none transition-none w-full',
+                // `!h-auto` neutralizes the `h-9` of `Nav`'s default size variant, otherwise the
+                // poster card would overflow the fixed-height anchor and overlap the next row.
+                isGrid
+                  ? 'text-xs !h-auto p-1 rounded-lg transition-none w-full'
+                  : 'text-xs p-3 h-5 rounded-none transition-none w-full',
                 highlightLocalGames && 'text-foreground',
                 highlightLocalGames && gamePath && isPathValid && 'text-accent-foreground',
                 highlightLocalGames && !gamePath && !isDarkMode && 'text-foreground',
@@ -343,12 +464,16 @@ export function GameNav({
               params={{ gameId, groupId: encodeURIComponent(groupId) }}
               resetScroll={false}
             >
-              <div
-                className={cn('flex flex-row gap-2 items-center w-full')}
-                style={{ width: `${libraryBarWidth - 25}px` }}
-              >
-                {buildNavLayout(false)}
-              </div>
+              {isGrid ? (
+                buildPosterLayout()
+              ) : (
+                <div
+                  className={cn('flex flex-row gap-2 items-center w-full')}
+                  style={{ width: `${libraryBarWidth - 25}px` }}
+                >
+                  {buildNavLayout(false)}
+                </div>
+              )}
             </Nav>
           </div>
         </ContextMenuTrigger>

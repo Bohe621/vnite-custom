@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { AccordionContent, AccordionItem, AccordionTrigger } from '~/components/ui/accordion'
+import { AccordionItem, AccordionTrigger } from '~/components/ui/accordion'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,6 +10,7 @@ import { useConfigState } from '~/hooks'
 import { getRecentGameIds, useVisibleGameIds } from '~/stores/game'
 import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
+import { GameListContent } from './GameListContent'
 
 export function RecentGames(): React.JSX.Element {
   const [showRecentGamesInGameList, setShowRecentGamesInGameList] = useConfigState(
@@ -36,17 +37,21 @@ export function RecentGames(): React.JSX.Element {
               </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-          <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+          <GameListContent>
             {/* If there are no recent games, show a message */}
             {games.length === 0 && (
-              <div className="flex items-center justify-center text-xs text-muted-foreground">
+              <div
+                className={cn(
+                  'col-span-full flex items-center justify-center text-xs text-muted-foreground'
+                )}
+              >
                 {t('list.recent.empty')}
               </div>
             )}
             {games.map((gameId) => (
               <GameNav key={gameId} gameId={gameId} groupId="recentGames" />
             ))}
-          </AccordionContent>
+          </GameListContent>
         </AccordionItem>
       )}
     </>

@@ -1,10 +1,12 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
-import { AccordionContent, AccordionItem, AccordionTrigger } from '~/components/ui/accordion'
+import { AccordionItem, AccordionTrigger } from '~/components/ui/accordion'
 import { useConfigState } from '~/hooks'
-import { sortGames, useVisibleGameIds } from '~/stores/game'
+import { sortGames, useNotInLibraryGameIds, useVisibleGameIds } from '~/stores/game'
 import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
 import { PlaceHolder } from './PlaceHolder'
 
@@ -16,7 +18,16 @@ export function AllGameComponent({
   const [by] = useConfigState('game.gameList.sort.by')
   const [order] = useConfigState('game.gameList.sort.order')
   const visibleGameIds = useVisibleGameIds()
-  const games = sortGames(by, order, visibleGameIds)
+  const notInLibraryGameIds = useNotInLibraryGameIds(visibleGameIds)
+
+  // "All games" means the ones actually in the library. Records whose every version directory is
+  // gone get their own group instead (see `NotInLibraryGame`).
+  const libraryGameIds = useMemo(() => {
+    const missing = new Set(notInLibraryGameIds)
+    return visibleGameIds.filter((gameId) => !missing.has(gameId))
+  }, [visibleGameIds, notInLibraryGameIds])
+
+  const games = sortGames(by, order, libraryGameIds)
   const { t } = useTranslation('game')
 
   return (
@@ -27,7 +38,7 @@ export function AllGameComponent({
           <GroupSortSummary gameIds={games} by={by} />
         </div>
       </AccordionTrigger>
-      <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+      <GameListContent>
         {games.map((gameId) => (
           <LazyLoadComponent
             key={gameId}
@@ -38,7 +49,7 @@ export function AllGameComponent({
             <GameNav gameId={gameId} groupId="all" />
           </LazyLoadComponent>
         ))}
-      </AccordionContent>
+      </GameListContent>
     </AccordionItem>
   )
 }

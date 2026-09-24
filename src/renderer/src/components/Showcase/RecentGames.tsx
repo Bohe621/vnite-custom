@@ -15,6 +15,8 @@ export function RecentGames(): React.JSX.Element {
   const games = getRecentGameIds(15, visibleGameIds)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showRecentGamesInGameList] = useConfigState('game.gameList.showRecentGames')
+  // Poster shape for the showcase lists: `portrait` (2:3) or `wide` (3:2)
+  const [posterShape] = useConfigState('game.showcase.posterShape')
   const libraryBarWidth = useLibraryStore((state) => state.libraryBarWidth)
 
   const scroll = throttle((direction: 'left' | 'right'): void => {
@@ -71,15 +73,24 @@ export function RecentGames(): React.JSX.Element {
         {games.length === 0 && (
           <div className="text-muted-foreground text-sm">{t('list.recent.empty')}</div>
         )}
-        {games.map((game, index) =>
-          index === 0 ? (
-            <div
-              key={game}
-              className={cn(
-                'flex-shrink-0' // Preventing compression
-              )}
-            >
-              {showRecentGamesInGameList ? (
+        {games.map((game, index) => (
+          <div
+            key={game}
+            className={cn(
+              'flex-shrink-0' // Preventing compression
+            )}
+          >
+            {posterShape === 'wide' ? (
+              // Wide mode: every card becomes the 3:2 wide poster, i.e. the same
+              // "long image" that used to appear only as the first card here.
+              <GamePoster
+                gameId={game}
+                groupId={showRecentGamesInGameList ? 'recentGames' : undefined}
+                showRemoveFromRecent
+                shape="wide"
+              />
+            ) : index === 0 ? (
+              showRecentGamesInGameList ? (
                 <BigGamePoster
                   className=""
                   gameId={game}
@@ -88,23 +99,14 @@ export function RecentGames(): React.JSX.Element {
                 />
               ) : (
                 <BigGamePoster gameId={game} showRemoveFromRecent />
-              )}
-            </div>
-          ) : (
-            <div
-              key={game}
-              className={cn(
-                'flex-shrink-0' // Preventing compression
-              )}
-            >
-              {index < 5 && showRecentGamesInGameList ? (
-                <GamePoster gameId={game} groupId="recentGames" showRemoveFromRecent />
-              ) : (
-                <GamePoster gameId={game} showRemoveFromRecent />
-              )}
-            </div>
-          )
-        )}
+              )
+            ) : index < 5 && showRecentGamesInGameList ? (
+              <GamePoster gameId={game} groupId="recentGames" showRemoveFromRecent />
+            ) : (
+              <GamePoster gameId={game} showRemoveFromRecent />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

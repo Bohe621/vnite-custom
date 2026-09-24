@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@ui/accordion'
+import { Accordion, AccordionItem, AccordionTrigger } from '@ui/accordion'
 import { ScrollArea } from '@ui/scroll-area'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,9 @@ import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
 import { useGameListStore } from '../store'
 import { AllGameComponent } from './AllGame'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
+import { NOT_IN_LIBRARY_GROUP_ID, NotInLibraryGame } from './NotInLibraryGame'
 import { PlaceHolder } from './PlaceHolder'
 import { RecentGames } from './RecentGames'
 
@@ -25,7 +27,13 @@ export function CollectionComponent({
   const [overrideCollectionSort] = useConfigState('game.gameList.overrideCollectionSort')
   const collections = useGameCollectionStore((state) => state.documents)
   const visibleGameIds = useVisibleGameIds()
-  const defaultValues = [...Object.keys(collections), '__empty__', 'all', 'recentGames']
+  const defaultValues = [
+    ...Object.keys(collections),
+    '__empty__',
+    'all',
+    'recentGames',
+    NOT_IN_LIBRARY_GROUP_ID
+  ]
   const [showAllGamesInGroup] = useConfigState('game.gameList.showAllGamesInGroup')
 
   const setOpenValues = useGameListStore((s) => s.setOpenValues)
@@ -52,7 +60,10 @@ export function CollectionComponent({
   }, [visibleGameIds, collectedGameIds])
 
   return (
-    <ScrollArea className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}>
+    <ScrollArea
+      scrollRestorationId="library-game-list-collection"
+      className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}
+    >
       {defaultValues.length > 2 ? (
         <Accordion
           key={'collection'}
@@ -78,7 +89,7 @@ export function CollectionComponent({
                     </div>
                   </AccordionTrigger>
                 </CollectionCM>
-                <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1 w-full')}>
+                <GameListContent className={cn('w-full')}>
                   {(overrideCollectionSort ? sortGames(by, order, gameIds) : gameIds).map(
                     (game) => (
                       <LazyLoadComponent
@@ -91,7 +102,7 @@ export function CollectionComponent({
                       </LazyLoadComponent>
                     )
                   )}
-                </AccordionContent>
+                </GameListContent>
               </AccordionItem>
             )
           })}
@@ -103,7 +114,7 @@ export function CollectionComponent({
                   <GroupSortSummary gameIds={uncollectedGameIds} by={by} />
                 </div>
               </AccordionTrigger>
-              <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1 w-full')}>
+              <GameListContent className={cn('w-full')}>
                 {sortGames(by, order, uncollectedGameIds).map((game) => (
                   <LazyLoadComponent
                     key={game}
@@ -114,11 +125,14 @@ export function CollectionComponent({
                     <GameNav key={game} gameId={game} groupId={'all'} />
                   </LazyLoadComponent>
                 ))}
-              </AccordionContent>
+              </GameListContent>
             </AccordionItem>
           )}
           {/* All Games */}
           {showAllGamesInGroup && <AllGameComponent scrollPosition={scrollPosition} />}
+
+          {/* Games whose every version directory is gone */}
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       ) : (
         <Accordion
@@ -130,6 +144,7 @@ export function CollectionComponent({
         >
           <RecentGames />
           <AllGameComponent scrollPosition={scrollPosition} />
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       )}
     </ScrollArea>

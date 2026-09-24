@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@ui/popover'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTagDisplay } from '~/hooks'
 import { getAllExtraValuesForKey, getAllValuesInKey } from '~/stores/game'
 import { cn } from '~/utils'
 import { useFilterStore } from './store'
@@ -21,6 +22,9 @@ interface Option {
   value: string
   label: string
 }
+
+/** 稳定的空数组，避免 useTagDisplay 每次拿到新引用 */
+const NO_VALUES: readonly string[] = []
 
 export function FilterCombobox({
   field,
@@ -34,24 +38,29 @@ export function FilterCombobox({
   const { filter, deleteFilter, addFilter } = useFilterStore()
   const selectedValues = filter[field] || []
 
-  const options: Option[] = React.useMemo(() => {
-    let allValues: string[] = []
-
+  const allValues: string[] = React.useMemo(() => {
     // Check if it's an extra information field
     if (field.startsWith('metadata.extra.')) {
       const extraKey = field.replace('metadata.extra.', '')
-      allValues = getAllExtraValuesForKey(extraKey)
-      console.warn(`allValues: ${allValues} extraKey: ${extraKey}`)
-    } else {
-      allValues = getAllValuesInKey(field as any)
+      const values = getAllExtraValuesForKey(extraKey)
+      console.warn(`allValues: ${values} extraKey: ${extraKey}`)
+      return values
     }
+    return getAllValuesInKey(field as any)
+  }, [field])
 
+  // 标签字段的候选值是实体 key，下拉里要显示当前语言的译名（值本身仍用 key）
+  const tagDisplay = useTagDisplay(field === 'metadata.tags' ? allValues : NO_VALUES)
+
+  const options: Option[] = React.useMemo(() => {
     const allOptions = allValues.map((value) => ({
       value,
       label:
         field === 'record.playStatus'
           ? t(`utils:game.playStatus.${value}`) // Translate play status
-          : value
+          : field === 'metadata.tags'
+            ? (tagDisplay[value] ?? value)
+            : value
     }))
 
     // Sort: selected items appear first
@@ -69,7 +78,7 @@ export function FilterCombobox({
       }
       return a.label.localeCompare(b.label, 'zh-CN')
     })
-  }, [field, selectedValues, t])
+  }, [allValues, selectedValues, t, field, tagDisplay])
 
   const handleSelect = (value: string): void => {
     if (selectedValues.includes(value)) {
@@ -99,7 +108,9 @@ export function FilterCombobox({
                     key={value}
                     className="px-2 py-1 text-sm rounded-md bg-primary/[0.8] text-primary-foreground"
                   >
-                    {options.find((opt) => opt.value === value)?.label || value}
+                    {options.find((opt) => opt.value === value)?.label ||
+                      tagDisplay[value] ||
+                      value}
                   </span>
                 ))
               ) : (
@@ -129,7 +140,9 @@ export function FilterCombobox({
                 {options.map((option) => (
                   <CommandItem
                     key={option.value}
-                    value={option.value}
+                    // 搜索匹配显示文本；实体 key 作为附加关键词，两种写法都能搜到
+                    value={option.label}
+                    keywords={option.label === option.value ? undefined : [option.value]}
                     onSelect={() => handleSelect(option.value)}
                   >
                     {option.label}

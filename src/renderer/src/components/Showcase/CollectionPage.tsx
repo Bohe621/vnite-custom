@@ -93,7 +93,10 @@ export function CollectionPage(): React.JSX.Element {
       className={cn('flex flex-col gap-3 h-full bg-transparent select-none')}
       style={{ width: `calc(100vw - ${libraryBarWidth + 60 - (libraryBarWidth === 0 ? 1 : 0)}px)` }}
     >
-      <ScrollArea className={cn('w-full h-full pb-2')}>
+      <ScrollArea
+        scrollRestorationId="library-collection-page"
+        className={cn('w-full h-full pb-2')}
+      >
         <div className={cn('w-full flex flex-col gap-1 pt-[18px]')}>
           <div className={cn('flex flex-row items-center gap-5 justify-center px-5')}>
             <div className={cn('text-accent-foreground select-none flex-shrink-0')}>

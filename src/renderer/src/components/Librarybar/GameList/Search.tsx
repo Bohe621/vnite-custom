@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@ui/accordion'
+import { Accordion, AccordionItem, AccordionTrigger } from '@ui/accordion'
 import { ScrollArea } from '@ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
@@ -6,6 +6,7 @@ import { useConfigState } from '~/hooks'
 import { searchGames, sortGames } from '~/stores/game'
 import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
 import { PlaceHolder } from './PlaceHolder'
 
@@ -21,7 +22,10 @@ export function SearchComponent({
   const { t } = useTranslation('game')
   const games = sortGames(by, order, searchGames(query))
   return (
-    <ScrollArea className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}>
+    <ScrollArea
+      scrollRestorationId="library-game-list-search"
+      className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}
+    >
       <Accordion
         type="multiple"
         defaultValue={['all']}
@@ -34,7 +38,7 @@ export function SearchComponent({
               <GroupSortSummary gameIds={games} by={by} />
             </div>
           </AccordionTrigger>
-          <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+          <GameListContent>
             {games.map((game) => (
               <LazyLoadComponent
                 key={game}
@@ -45,7 +49,7 @@ export function SearchComponent({
                 <GameNav key={game} gameId={game} groupId={'0'} />
               </LazyLoadComponent>
             ))}
-          </AccordionContent>
+          </GameListContent>
         </AccordionItem>
       </Accordion>
     </ScrollArea>

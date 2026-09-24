@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@ui/accordion'
+import { Accordion, AccordionItem, AccordionTrigger } from '@ui/accordion'
 import { ScrollArea } from '@ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
@@ -8,7 +8,9 @@ import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
 import { useGameListStore, usePlayStatusOrderStore } from '../store'
 import { AllGameComponent } from './AllGame'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
+import { NotInLibraryGame } from './NotInLibraryGame'
 import { PlaceHolder } from './PlaceHolder'
 import { RecentGames } from './RecentGames'
 
@@ -35,7 +37,10 @@ export function PlayStatusGamesComponent({
   const { t } = useTranslation('game')
 
   return (
-    <ScrollArea className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}>
+    <ScrollArea
+      scrollRestorationId="library-game-list-play-status"
+      className={cn('w-full h-full pr-3 -mr-3 pt-1 pb-1')}
+    >
       {fields.length > 0 ? (
         <Accordion
           key={`record.playStatus`}
@@ -59,7 +64,7 @@ export function PlayStatusGamesComponent({
                     <GroupSortSummary gameIds={gameIds} by={by} />
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+                <GameListContent>
                   {sortGames(by, order, gameIds).map((game) => (
                     <LazyLoadComponent
                       key={game}
@@ -72,12 +77,15 @@ export function PlayStatusGamesComponent({
                       <GameNav key={game} gameId={game} groupId={`record.playStatus:${field}`} />
                     </LazyLoadComponent>
                   ))}
-                </AccordionContent>
+                </GameListContent>
               </AccordionItem>
             )
           })}
           {/* All Games */}
           {showAllGamesInGroup && <AllGameComponent scrollPosition={scrollPosition} />}
+
+          {/* Games whose every version directory is gone */}
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       ) : (
         <Accordion
@@ -88,6 +96,7 @@ export function PlayStatusGamesComponent({
         >
           <RecentGames />
           <AllGameComponent scrollPosition={scrollPosition} />
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       )}
     </ScrollArea>

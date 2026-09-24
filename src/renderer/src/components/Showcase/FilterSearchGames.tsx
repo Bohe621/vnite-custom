@@ -86,7 +86,10 @@ export function FilterSearchGamesComponent({
         </Button>
         <SeparatorDashed className="border-border" />
       </div>
-      <ScrollArea className={cn('w-full flex-1 min-h-0 pb-2')}>
+      <ScrollArea
+        scrollRestorationId="library-filter-search"
+        className={cn('w-full flex-1 min-h-0 pb-2')}
+      >
         <div className={cn('w-full flex flex-col gap-1')}>
           {/* Game List Container */}
           <div

@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@ui/accordion'
+import { Accordion, AccordionItem, AccordionTrigger } from '@ui/accordion'
 import { ScrollArea } from '@ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
@@ -7,6 +7,7 @@ import { filterGames, sortGames } from '~/stores/game'
 import { cn } from '~/utils'
 import { useFilterStore } from '../Filter/store'
 import { GameNav } from '../GameNav'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
 import { PlaceHolder } from './PlaceHolder'
 
@@ -21,7 +22,10 @@ export function FilterGameComponent({
   const games = sortGames(by, order, filterGames(filter))
   const { t } = useTranslation('game')
   return (
-    <ScrollArea className={cn('w-full h-full pr-3 -mr-3 pb-1')}>
+    <ScrollArea
+      scrollRestorationId="library-game-list-filter"
+      className={cn('w-full h-full pr-3 -mr-3 pb-1')}
+    >
       <Accordion
         type="multiple"
         defaultValue={['filter']}
@@ -34,7 +38,7 @@ export function FilterGameComponent({
               <GroupSortSummary gameIds={games} by={by} />
             </div>
           </AccordionTrigger>
-          <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+          <GameListContent>
             {games.length !== 0 ? (
               games.map((game) => (
                 <LazyLoadComponent
@@ -47,9 +51,11 @@ export function FilterGameComponent({
                 </LazyLoadComponent>
               ))
             ) : (
-              <div className={cn('text-center text-xs mt-2')}>{t('list.filter.noResults')}</div>
+              <div className={cn('col-span-full text-center text-xs mt-2')}>
+                {t('list.filter.noResults')}
+              </div>
             )}
-          </AccordionContent>
+          </GameListContent>
         </AccordionItem>
       </Accordion>
     </ScrollArea>

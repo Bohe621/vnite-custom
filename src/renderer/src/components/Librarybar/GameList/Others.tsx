@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@ui/accordion'
+import { Accordion, AccordionItem, AccordionTrigger } from '@ui/accordion'
 import { ScrollArea } from '@ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
@@ -8,7 +8,9 @@ import { cn } from '~/utils'
 import { GameNav } from '../GameNav'
 import { useGameListStore } from '../store'
 import { AllGameComponent } from './AllGame'
+import { GameListContent } from './GameListContent'
 import { GroupSortSummary } from './GroupSortSummary'
+import { NOT_IN_LIBRARY_GROUP_ID, NotInLibraryGame } from './NotInLibraryGame'
 import { PlaceHolder } from './PlaceHolder'
 import { RecentGames } from './RecentGames'
 
@@ -30,7 +32,7 @@ function OthersComponent({
   }
 
   const fields = [...getAllValuesInKey(fieldName, visibleGameIds), '__empty__']
-  const defaultValues = [...fields, 'all', 'recentGames']
+  const defaultValues = [...fields, 'all', 'recentGames', NOT_IN_LIBRARY_GROUP_ID]
 
   const setOpenValues = useGameListStore((s) => s.setOpenValues)
   const openValues = useGameListStore((s) => s.getOpenValues(fieldName))
@@ -40,7 +42,10 @@ function OthersComponent({
   }
 
   return (
-    <ScrollArea className={cn('w-full h-full pr-3 -mr-3 pb-1 pt-1')}>
+    <ScrollArea
+      scrollRestorationId="library-game-list"
+      className={cn('w-full h-full pr-3 -mr-3 pb-1 pt-1')}
+    >
       {defaultValues.length > 2 ? (
         <Accordion
           key={`${fieldName}`}
@@ -67,7 +72,7 @@ function OthersComponent({
                       <GroupSortSummary gameIds={gameIds} by={by} />
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className={cn('rounded-none pt-1 flex flex-col gap-1')}>
+                  <GameListContent>
                     {sortGames(by, order, gameIds).map((game) => (
                       <LazyLoadComponent
                         key={`${game}`}
@@ -80,13 +85,16 @@ function OthersComponent({
                         <GameNav gameId={game} groupId={`${fieldName}:${field}`} />
                       </LazyLoadComponent>
                     ))}
-                  </AccordionContent>
+                  </GameListContent>
                 </AccordionItem>
               )
             })}
 
           {/* All Games */}
           {showAllGamesInGroup && <AllGameComponent scrollPosition={scrollPosition} />}
+
+          {/* Games whose every version directory is gone */}
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       ) : (
         <Accordion
@@ -98,6 +106,7 @@ function OthersComponent({
         >
           <RecentGames />
           <AllGameComponent scrollPosition={scrollPosition} />
+          <NotInLibraryGame scrollPosition={scrollPosition} />
         </Accordion>
       )}
     </ScrollArea>

@@ -17,6 +17,10 @@ import { useConfigState, useGameState } from '~/hooks'
 import { useRunningGames } from '~/pages/Library/store'
 import { useGameRegistry } from '~/stores/game'
 import { cn, navigateToGame } from '~/utils'
+import {
+  getShowcasePosterFrameHeight,
+  getShowcasePosterFrameWidthForHeight
+} from '../posterGridMetrics'
 import { PlayButton } from './PlayButton'
 
 export function BigGamePoster({
@@ -51,16 +55,31 @@ export function BigGamePoster({
   const stringToBase64 = (str: string): string =>
     btoa(String.fromCharCode(...new TextEncoder().encode(str)))
   const obfuscatedName = stringToBase64(name).slice(0, name.length)
+  // Keep the 3:2 aspect but size the card off the *portrait* frame height, so on the home
+  // page's 最近游戏 row this wide card's bottom edge lines up with the portrait cards next
+  // to it. At its own base width it would render 300x200 while those render 148x222, and
+  // the row's bottom would come out ragged. 222px tall at 3:2 is 333px wide.
+  const wideFrameWidth = getShowcasePosterFrameWidthForHeight(
+    'wide',
+    getShowcasePosterFrameHeight('portrait')
+  )
+  const wideFrameHeight = getShowcasePosterFrameHeight('portrait')
+  // Defined pixel sizes, not the `w-[300px] aspect-[3/2]` pair: `HoverCardAnimation` and
+  // `GameImage` both fill their parent, and the exact width matters to the row's layout.
+  const wideFrameStyle = { width: wideFrameWidth, height: wideFrameHeight }
+  // The frame div carries the exact pixel size (`wideFrameStyle`); the image just fills it,
+  // otherwise its own `aspect-[3/2]` would fight the height we set for row alignment.
   const posterImageClassName = cn(
-    'h-[222px] aspect-[3/2] cursor-pointer select-none object-cover rounded-lg bg-accent/30',
+    'size-full cursor-pointer select-none object-cover rounded-lg bg-accent/30',
     className
   )
   const titleFallback = (
     <div
       className={cn(
-        'w-[333px] aspect-[3/2] cursor-pointer object-cover flex items-center justify-center font-bold bg-muted/50',
+        'cursor-pointer object-cover flex items-center justify-center font-bold bg-muted/50',
         className
       )}
+      style={wideFrameStyle}
     >
       {gameName}
     </div>
@@ -128,12 +147,13 @@ export function BigGamePoster({
             <div
               className={cn(
                 'rounded-lg shadow-md',
-                'transition-all duration-300 ease-in-out',
+                'transition-shadow duration-300 ease-in-out',
                 isSelected
                   ? 'ring-2 ring-primary'
                   : 'ring-0 ring-border group-hover:ring-2 group-hover:ring-primary',
                 'relative overflow-hidden group'
               )}
+              style={wideFrameStyle}
             >
               <HoverCardAnimation>
                 <GameImage
@@ -223,7 +243,12 @@ export function BigGamePoster({
               </div>
             </div>
 
-            <div className="text-xs cursor-pointer select-none text-foreground hover:underline decoration-foreground truncate w-[333px] text-center">
+            <div
+              className={cn(
+                'text-xs cursor-pointer select-none text-foreground hover:underline decoration-foreground truncate text-center'
+              )}
+              style={{ width: wideFrameWidth }}
+            >
               {nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImageAndTitle ? (
                 <>
                   <span className="block group-hover:hidden truncate">{obfuscatedName}</span>

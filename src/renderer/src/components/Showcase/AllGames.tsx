@@ -1,4 +1,9 @@
-import { observeElementOffset, useVirtualizer, type Virtualizer } from '@tanstack/react-virtual'
+import {
+  observeElementOffset,
+  useVirtualizer,
+  type Range,
+  type Virtualizer
+} from '@tanstack/react-virtual'
 import { SeparatorDashed } from '@ui/separator-dashed'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,9 +30,8 @@ import { useConfigState } from '~/hooks'
 import { sortGames, useVisibleGameIds } from '~/stores/game'
 import { cn } from '~/utils'
 import {
-  SHOWCASE_POSTER_CARD_WIDTH,
-  SHOWCASE_POSTER_ITEM_OUTER_HEIGHT,
-  SHOWCASE_POSTER_MIN_COLUMN_GAP,
+  getShowcasePosterItemHeight,
+  getShowcasePosterRowMetrics,
   SHOWCASE_POSTER_ROW_GAP
 } from './posterGridMetrics'
 import { GamePoster } from './posters/GamePoster'
@@ -47,9 +51,80 @@ function chunkGamesByRow(gameIds: string[], columnCount: number): string[][] {
   return rows
 }
 
-// TanStack Router may restore the outer viewport scroll position before the virtualizer
-// attaches. Emit the current offset once on attach so the first visible range matches the
-// restored route position, then fall back to TanStack Virtual's normal scroll observer.
+/**
+ * Extra rows kept mounted above and below the visible range.
+ *
+ * The built-in `overscan` is too thin here: a newly mounted row at the band edge still has to
+ * decode its `<img>` (bytes are on disk, decode isn't). Two extra rows each side push that
+ * boundary off screen, so the image decodes before it scrolls into view. Items are keyed by
+ * row index, so a wider band costs dormant DOM, not re-renders.
+ */
+const SHOWCASE_ROW_OVERSCAN = 2
+
+/**
+ * Widen the default overscan band by `SHOWCASE_ROW_OVERSCAN` rows on each side.
+ *
+ * Reproduces `defaultRangeExtractor` and extends it, rather than adding to its result, because
+ * this function is memoized on its own identity: a closure created during render would change
+ * the option on every render and force the virtualizer to recompute its indexes for nothing.
+ */
+const extractAllGamesRows = ({ startIndex, endIndex, overscan, count }: Range): number[] => {
+  const start = Math.max(startIndex - overscan - SHOWCASE_ROW_OVERSCAN, 0)
+  const end = Math.min(endIndex + overscan + SHOWCASE_ROW_OVERSCAN, count - 1)
+  const length = Math.max(end - start + 1, 0)
+  const indexes = new Array<number>(length)
+
+  for (let offset = 0; offset < length; offset++) {
+    indexes[offset] = start + offset
+  }
+
+  return indexes
+}
+
+// TanStack Router restores the viewport scroll position asynchronously (after its commit), so
+// on the frame this observer attaches the scrollTop may still read 0 even though a restore is
+// pending. Seeding the virtualizer with that 0 renders the *top* rows for a frame; the restore
+// then jumps scrollTop, the range recomputes, and every poster remounts — the "showcase images
+// reload when coming back from a game page" bug. So: if a non-zero restore for this element is
+// pending, do *not* seed eagerly; let the real restore drive the first range instead.
+//
+// Pending is detected by reading TanStack Router's sessionStorage scroll cache, shaped
+// `{ [routeKey]: { [cssSelector]: { scrollX, scrollY } } }` (see router-core `scroll-restoration.js`).
+// The key string is asserted, not derived: the module exports `storageKey`/`restoreScroll` but
+// not the literal key. Every access is guarded (this runs during render commit; a throw would
+// take the wall down), and any parse/shape surprise falls back to `false` (eager seeding).
+const TANSTACK_SCROLL_STORAGE_KEY = 'tsr-scroll-restoration-v1_3'
+
+function hasPendingRestoration(element: HTMLElement): boolean {
+  try {
+    const raw = window.sessionStorage?.getItem(TANSTACK_SCROLL_STORAGE_KEY)
+    if (!raw) return false
+
+    const byKey: unknown = JSON.parse(raw)
+    if (typeof byKey !== 'object' || byKey === null) return false
+
+    for (const entries of Object.values(byKey as Record<string, unknown>)) {
+      if (typeof entries !== 'object' || entries === null) continue
+
+      for (const [selector, entry] of Object.entries(entries as Record<string, unknown>)) {
+        if (typeof entry !== 'object' || entry === null) continue
+
+        const { scrollY } = entry as { scrollY?: unknown }
+        // A cached 0 cannot be told apart from "nothing to restore", and seeding 0 is already
+        // what this function does by default — so only a non-zero row is worth waiting for.
+        if (typeof scrollY !== 'number' || scrollY === 0) continue
+
+        if (element.matches(selector)) return true
+      }
+    }
+  } catch {
+    // Malformed cache, unavailable storage, or an invalid selector — behave as if nothing
+    // is pending and let the caller seed the offset eagerly.
+  }
+
+  return false
+}
+
 function observeScrollViewportOffset(
   instance: Virtualizer<HTMLDivElement, HTMLDivElement>,
   cb: (offset: number, isScrolling: boolean) => void
@@ -60,7 +135,10 @@ function observeScrollViewportOffset(
     const offset = instance.options.horizontal
       ? element.scrollLeft * ((instance.options.isRtl && -1) || 1)
       : element.scrollTop
-    cb(offset, false)
+
+    if (offset !== 0 || !hasPendingRestoration(element)) {
+      cb(offset, false)
+    }
   }
 
   return observeElementOffset(instance, cb)
@@ -69,6 +147,8 @@ function observeScrollViewportOffset(
 export function AllGames(): React.JSX.Element {
   const [by, setBy] = useConfigState('game.showcase.sort.by')
   const [order, setOrder] = useConfigState('game.showcase.sort.order')
+  // Poster shape for the showcase walls: `portrait` (2:3) or `wide` (3:2)
+  const [posterShape] = useConfigState('game.showcase.posterShape')
   const visibleGameIds = useVisibleGameIds()
   const games = sortGames(by, order, visibleGameIds)
   const toggleOrder = (): void => {
@@ -97,24 +177,42 @@ export function AllGames(): React.JSX.Element {
   const rowsHostRef = useRef<HTMLDivElement>(null)
   const measureGridRef = useRef<() => void>(() => {})
 
-  const columnCount = Math.max(
-    1,
-    Math.floor(
-      (gridLayoutState.contentWidth + SHOWCASE_POSTER_MIN_COLUMN_GAP) /
-        (SHOWCASE_POSTER_CARD_WIDTH + SHOWCASE_POSTER_MIN_COLUMN_GAP)
-    )
+  // Column count, card width and gap for the current content width. The wide shape is
+  // `fluid`: its gap stays pinned at the minimum and the card absorbs the leftover instead
+  // of the gap, so a row can never end up with a 347px void between two posters.
+  const rowMetrics = useMemo(
+    () => getShowcasePosterRowMetrics(posterShape, gridLayoutState.contentWidth),
+    [posterShape, gridLayoutState.contentWidth]
   )
+  const columnCount = rowMetrics.columnCount
+  const posterCardWidth = rowMetrics.cardWidth
+  // The card height follows its width (3:2 for wide, 2:3 for portrait, plus the one-line
+  // title block), so the virtualized row height has to be recomputed with the width.
+  const posterItemHeight = getShowcasePosterItemHeight(posterShape, posterCardWidth)
   const rows = useMemo(() => chunkGamesByRow(games, columnCount), [columnCount, games])
   const rowCount = rows.length
 
+  // `directDomUpdates`: let the virtualizer write each row's `translateY` (and the host height)
+  // straight to the DOM instead of through React. Without it, every scroll tick re-renders the
+  // whole mounted band; with it, `onChange` only re-renders when the range/scrolling state
+  // actually changes. Measured on the portrait wall: a scroll step was median 15.2ms / p95
+  // 33.6ms, 28 of 60 steps over a frame, from ~130 posters mounting across the sweep. See
+  // `.workbuddy/docs/Vnite-开发速查.md`.
+  //
+  // Contract this now relies on (react-virtual docs): rows are `position: absolute` at
+  // `top:0;left:0`, must *not* set their own main-axis position (hence no `translateY` on the
+  // row), and the host takes `containerRef` without setting `height` itself. It stays a
+  // constant `true` (not a prop): toggling at runtime leaves stale inline styles.
   const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rowCount,
-    estimateSize: () => SHOWCASE_POSTER_ITEM_OUTER_HEIGHT,
+    estimateSize: () => posterItemHeight,
     gap: SHOWCASE_POSTER_ROW_GAP,
     getScrollElement: () => scrollViewport,
     observeElementOffset: observeScrollViewportOffset,
+    rangeExtractor: extractAllGamesRows,
     overscan: 3,
     scrollMargin: gridLayoutState.scrollMargin,
+    directDomUpdates: true,
     useFlushSync: false
   })
 
@@ -185,11 +283,15 @@ export function AllGames(): React.JSX.Element {
   }, [])
 
   // After row/column structure changes, remeasure on the next frame to refresh layout offsets.
+  // `posterItemHeight` is part of the trigger because the fluid card width (and therefore the
+  // row height) changes continuously while the window is resized, and the virtualizer caches
+  // the size it estimated until it is explicitly told to re-measure.
   useLayoutEffect(() => {
+    rowVirtualizer.measure()
     const frame = requestAnimationFrame(() => measureGridRef.current())
 
     return (): void => cancelAnimationFrame(frame)
-  }, [columnCount, rowCount])
+  }, [columnCount, rowCount, posterItemHeight])
 
   const virtualRows = rowVirtualizer.getVirtualItems()
 
@@ -270,9 +372,11 @@ export function AllGames(): React.JSX.Element {
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div
-              ref={rowsHostRef}
+              ref={(node) => {
+                rowsHostRef.current = node
+                rowVirtualizer.containerRef(node)
+              }}
               className={cn('w-full relative')}
-              style={{ height: rowVirtualizer.getTotalSize() }}
               onContextMenuCapture={() => {
                 pendingContextMenuGameIdRef.current = null
               }}
@@ -287,38 +391,67 @@ export function AllGames(): React.JSX.Element {
                 return (
                   <div
                     key={virtualRow.key}
+                    // Required for `directDomUpdates`: the virtualizer looks each row up in
+                    // `elementsCache` by this attribute. Without it the cache stays empty and
+                    // every row keeps its mounted position (all stacked at the top).
+                    data-index={virtualRow.index}
                     className={cn('absolute left-0 top-0 w-full')}
-                    style={{
-                      height: virtualRow.size,
-                      transform: `translateY(${
-                        virtualRow.start - rowVirtualizer.options.scrollMargin
-                      }px)`
-                    }}
+                    // `height` only: with `directDomUpdates` the virtualizer owns this row's
+                    // `transform`, so writing `translateY` here would fight the position it
+                    // sets on the same frame and the row would stutter.
+                    style={{ height: virtualRow.size }}
+                    // A/B tested: removing this made no measurable difference to the scroll
+                    // frame budget (max 41.4ms vs 39.8ms over an identical 372-frame wiggle),
+                    // so its ResizeObserver is NOT a source of the residual jitter — kept
+                    // because `directDomUpdates` needs it to populate `elementsCache`.
+                    ref={rowVirtualizer.measureElement}
                   >
                     <div
-                      className={cn('flex items-start justify-between')}
-                      style={{ height: SHOWCASE_POSTER_ITEM_OUTER_HEIGHT }}
+                      className={cn(
+                        'flex items-start',
+                        // Both fits lay their rows out from the left. `spread` needs the
+                        // fillers below to keep a partial last row at the same gap as a full
+                        // one; `fluid` lets the card absorb the leftover instead, but it still
+                        // must not centre — the row spans the full content width, so
+                        // `justify-center` would push a two-card last row into the middle.
+                        rowMetrics.fit === 'fluid' ? 'justify-start' : 'justify-between'
+                      )}
+                      style={
+                        rowMetrics.fit === 'fluid'
+                          ? { height: posterItemHeight, columnGap: rowMetrics.columnGap }
+                          : { height: posterItemHeight }
+                      }
                     >
                       {rowGameIds.map((gameId) => (
                         <div
                           key={gameId}
                           className={cn('flex-shrink-0')}
-                          style={{ width: SHOWCASE_POSTER_CARD_WIDTH }}
+                          style={{ width: posterCardWidth }}
                           onContextMenuCapture={() => {
                             pendingContextMenuGameIdRef.current = gameId
                             setContextMenuGameId(gameId)
                           }}
                         >
-                          <GamePoster gameId={gameId} disableContextMenu={true} />
+                          <GamePoster
+                            gameId={gameId}
+                            disableContextMenu={true}
+                            shape={posterShape}
+                            cardWidth={posterCardWidth}
+                          />
                         </div>
                       ))}
-                      {Array.from({ length: fillerCount }, (_, fillerIndex) => (
-                        <div
-                          key={`all-games-row-${virtualRow.index}-filler-${fillerIndex}`}
-                          className={cn('pointer-events-none flex-shrink-0')}
-                          style={{ width: SHOWCASE_POSTER_CARD_WIDTH }}
-                        />
-                      ))}
+                      {/* Spacing filler: only `spread` rows need it, so that a partial last row
+                          keeps the same gap as a full one. A `fluid` row has no gap to keep —
+                          its cards are already sized to fill the row — so a partial last row
+                          just ends early, exactly like the collection grid. */}
+                      {rowMetrics.fit === 'spread' &&
+                        Array.from({ length: fillerCount }, (_, fillerIndex) => (
+                          <div
+                            key={`all-games-row-${virtualRow.index}-filler-${fillerIndex}`}
+                            className={cn('pointer-events-none flex-shrink-0')}
+                            style={{ width: posterCardWidth }}
+                          />
+                        ))}
                     </div>
                   </div>
                 )

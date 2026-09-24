@@ -9,7 +9,7 @@ import {
   SelectValue
 } from '@ui/select'
 import { SeparatorDashed } from '@ui/separator-dashed'
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LazyLoadComponent, trackWindowScroll } from 'react-lazy-load-image-component'
 import { useGameBatchEditorStore } from '~/components/GameBatchEditor/store'
@@ -22,6 +22,7 @@ import { sortGames, useVisibleGameIds } from '~/stores/game'
 import { cn } from '~/utils'
 import { GamePoster } from './posters/GamePoster'
 import { PlaceHolder } from './posters/PlaceHolder'
+import { getShowcasePosterRowMetrics } from './posterGridMetrics'
 import { ScrollToTopButton } from './ScrollToTopButton'
 
 export type DragContextType = {
@@ -57,14 +58,22 @@ export function CollectionGamesComponent({
   const { t } = useTranslation('game')
   const collections = useGameCollectionStore((state) => state.documents)
   const [nsfwFilterMode] = useConfigState('appearances.nsfwFilterMode')
+  // Poster shape for the showcase lists: `portrait` (2:3) or `wide` (3:2)
+  const [posterShape] = useConfigState('game.showcase.posterShape')
   const games = useVisibleGameIds(collections[collectionId]?.games)
   const sortedGames = by === 'custom' ? games : sortGames(by, order, games)
   const collectionName = collections[collectionId]?.name
 
-  const [gap, setGap] = useState<number>(0)
-  const [columns, setColumns] = useState<number>(0)
+  const [gridContentWidth, setGridContentWidth] = useState<number>(0)
   const gridContainerRef = useRef<HTMLDivElement | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  // Column count, card width and gap for the current grid width. Shared with the virtualized
+  // "all games" wall so the two lists can never lay out differently.
+  const rowMetrics = useMemo(
+    () => getShowcasePosterRowMetrics(posterShape, gridContentWidth),
+    [posterShape, gridContentWidth]
+  )
 
   const selectGames = useGameBatchEditorStore((state) => state.selectGames)
 
@@ -94,34 +103,23 @@ export function CollectionGamesComponent({
   }, [selectGames, games])
 
   useEffect(() => {
-    const calculateGap = (): void => {
-      const gridContainer = gridContainerRef.current
-      if (gridContainer) {
-        const containerWidth = gridContainer.offsetWidth
-        const gridItems = gridContainer.children
-        if (gridItems.length === 0) return
-
-        const itemWidth = (gridItems[0] as HTMLDivElement).offsetWidth
-        const containerStyle = window.getComputedStyle(gridContainer)
-        const minGap = parseFloat(containerStyle.getPropertyValue('column-gap'))
-        const pL = parseFloat(containerStyle.paddingLeft)
-        const pR = parseFloat(containerStyle.paddingRight)
-
-        const columns = Math.floor((containerWidth - pL - pR + minGap) / (itemWidth + minGap))
-        setColumns(columns)
-        if (columns > 1) {
-          const gapTrue = (containerWidth - pL - pR - columns * itemWidth) / (columns - 1)
-          setGap(gapTrue)
-        }
-      }
-    }
-
-    calculateGap()
-    const observer = new ResizeObserver(calculateGap)
     const gridContainer = gridContainerRef.current
-    if (gridContainer) {
-      observer.observe(gridContainer)
+    if (!gridContainer) return
+
+    // Only the available width is measured; column count, card width and gap are derived from
+    // it. Deriving means the poster shape toggle needs no re-attach: the metrics recompute
+    // whenever `posterShape` changes even though the container width does not.
+    const measureContentWidth = (): void => {
+      const containerStyle = window.getComputedStyle(gridContainer)
+      const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0
+      const paddingRight = parseFloat(containerStyle.paddingRight) || 0
+
+      setGridContentWidth(Math.max(0, gridContainer.clientWidth - paddingLeft - paddingRight))
     }
+
+    measureContentWidth()
+    const observer = new ResizeObserver(measureContentWidth)
+    observer.observe(gridContainer)
 
     return (): void => observer.disconnect()
   }, [])
@@ -185,17 +183,37 @@ export function CollectionGamesComponent({
           )}
           <SeparatorDashed className="border-border" />
         </div>
-        <ScrollArea ref={scrollAreaRef} className={cn('w-full flex-1 min-h-0 pb-2')}>
+        <ScrollArea
+          ref={scrollAreaRef}
+          scrollRestorationId="library-collection-games"
+          className={cn('w-full flex-1 min-h-0 pb-2')}
+        >
           <div className={cn('w-full flex flex-col gap-1')}>
             {/* Game List Container */}
             <div
               ref={gridContainerRef}
               className={cn(
-                'grid grid-cols-[repeat(auto-fill,148px)]',
+                'grid',
                 // '3xl:grid-cols-[repeat(auto-fill,176px)]',
-                'justify-between gap-6 gap-y-[30px] w-full',
+                'gap-y-[30px] w-full',
+                // `spread` (portrait): auto tracks, leftover pushed into the gap. `fluid` (wide):
+                // gap pinned, card absorbs the leftover so tracks span the container exactly.
+                // Neither centres: a centred track group pulls the first column in and shoves a
+                // partial last row into the middle of the page.
+                rowMetrics.fit === 'spread' ? 'justify-between gap-6' : 'justify-start',
                 'pt-2 pb-6 pl-5 pr-5' // Add inner margins to show shadows
               )}
+              style={
+                rowMetrics.fit === 'fluid'
+                  ? {
+                      // `minmax(0, …)` is required: a plain fixed track sets the grid's min-content
+                      // to a full row, and Radix's `display: table` wrapper would then refuse to
+                      // shrink below one row and overflow instead of dropping columns.
+                      gridTemplateColumns: `repeat(${rowMetrics.columnCount}, minmax(0, ${rowMetrics.cardWidth}px))`,
+                      columnGap: rowMetrics.columnGap
+                    }
+                  : { gridTemplateColumns: `repeat(auto-fill, ${rowMetrics.cardWidth}px)` }
+              }
             >
               {sortedGames?.map((gameId, index) => (
                 <div
@@ -207,20 +225,25 @@ export function CollectionGamesComponent({
                   <LazyLoadComponent
                     threshold={300}
                     scrollPosition={scrollPosition}
-                    placeholder={<PlaceHolder />} // Necessary for scroll restoration
+                    placeholder={
+                      <PlaceHolder shape={posterShape} cardWidth={rowMetrics.cardWidth} />
+                    } // Necessary for scroll restoration
                   >
                     <GamePoster
                       gameId={gameId}
                       groupId={`collection:${collectionId}`}
+                      shape={posterShape}
+                      cardWidth={rowMetrics.cardWidth}
                       dragScenario={
                         by === 'custom' && nsfwFilterMode === NSFWFilterMode.All
                           ? 'reorder-games-in-collection'
                           : undefined
                       }
-                      parentGap={gap}
+                      parentGap={rowMetrics.columnGap}
                       position={
-                        (index % columns === 0 && 'left') ||
-                        (index % columns === columns - 1 && 'right') ||
+                        (index % rowMetrics.columnCount === 0 && 'left') ||
+                        (index % rowMetrics.columnCount === rowMetrics.columnCount - 1 &&
+                          'right') ||
                         'center'
                       }
                     />

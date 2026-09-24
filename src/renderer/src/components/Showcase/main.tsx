@@ -98,7 +98,11 @@ export function Showcase(): React.JSX.Element {
     <div className={cn('flex flex-col gap-3 h-full w-full bg-transparent')}>
       {gameIds.length !== 0 ? (
         <>
-          <ScrollArea ref={scrollAreaRef} className={cn('w-full h-full')}>
+          <ScrollArea
+            ref={scrollAreaRef}
+            scrollRestorationId="library-showcase"
+            className={cn('w-full h-full')}
+          >
             <div className={cn('pt-[18px] flex flex-col gap-3')}>{MainContent}</div>
           </ScrollArea>
           <ScrollToTopButton scrollAreaRef={scrollAreaRef} />

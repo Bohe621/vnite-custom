@@ -1,4 +1,4 @@
-import { NSFWBlurLevel } from '@appTypes/models'
+import { NSFWBlurLevel, type PosterShape } from '@appTypes/models'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,19 +32,24 @@ import {
   type Edge,
   type PreviewState
 } from '~/utils/dnd-utills'
+import { getShowcasePosterWidthClass } from '../posterGridMetrics'
 import { PlayButton } from './PlayButton'
 
 function Preview({
   title,
-  transparentBackground = false
+  transparentBackground = false,
+  shape = 'portrait'
 }: {
   title: string
   transparentBackground?: boolean
+  shape?: PosterShape
 }): React.JSX.Element {
   return (
     <div
       className={cn(
-        'relative w-[148px] aspect-[2/3] rounded-lg',
+        'relative rounded-lg',
+        getShowcasePosterWidthClass(shape),
+        shape === 'wide' ? 'aspect-[3/2]' : 'aspect-[2/3]',
         'border-4 border-dashed border-primary',
         !transparentBackground && 'bg-background'
       )}
@@ -67,7 +72,9 @@ export function GamePoster({
   position = 'center',
   showRemoveFromRecent = false,
   inViewGames = [], // TODO: Support shift+click selection
-  disableContextMenu = false
+  disableContextMenu = false,
+  shape = 'portrait',
+  cardWidth
 }: {
   gameId: string
   groupId?: string
@@ -78,6 +85,14 @@ export function GamePoster({
   showRemoveFromRecent?: boolean
   inViewGames?: string[]
   disableContextMenu?: boolean
+  /** `portrait` = 2:3 cover (default), `wide` = 3:2 wide cover */
+  shape?: PosterShape
+  /**
+   * Explicit pixel width, used by the fluid showcase walls where the card width follows the
+   * window width and therefore cannot be a static Tailwind class. Omit it to fall back to
+   * the shape's base width class (horizontal rows and standalone callers).
+   */
+  cardWidth?: number
 }): React.JSX.Element {
   const navigate = useNavigate()
   const gameData = useGameRegistry((state) => state.gameMetaIndex[gameId])
@@ -105,6 +120,31 @@ export function GamePoster({
   const stringToBase64 = (str: string): string =>
     btoa(String.fromCharCode(...new TextEncoder().encode(str)))
   const obfuscatedName = stringToBase64(name).slice(0, name.length)
+
+  // Poster shape: `portrait` is the classic 2:3 cover (148x222), `wide` is the 3:2
+  // wide cover. Both widths come from posterGridMetrics so the card, the grid column
+  // width and the lazy-load placeholder can never drift apart.
+  const isWide = shape === 'wide'
+  // A fluid wall passes an explicit width; everything else keeps the static width class.
+  const widthClass = cardWidth === undefined ? getShowcasePosterWidthClass(shape) : 'w-full'
+  // The width must be *definite* here: `HoverCardAnimation`/`GameImage` fill with `100%`, but a
+  // percentage inside this shrink-to-fit flex box would collapse to the image's intrinsic width
+  // once the card outgrows its class-based size.
+  const fluidWidthStyle = cardWidth === undefined ? undefined : { width: cardWidth }
+  const posterImageClassName = cn(
+    widthClass,
+    isWide ? 'aspect-[3/2]' : 'aspect-[2/3]',
+    'cursor-pointer select-none object-cover rounded-lg',
+    className
+  )
+  const posterTitleFallback = (
+    <div
+      className={cn(posterImageClassName, 'flex items-center justify-center font-bold bg-muted/50')}
+      onClick={() => navigateToGame(navigate, gameId, groupId || 'all')}
+    >
+      <div className="p-1 truncate select-none">{gameName}</div>
+    </div>
+  )
 
   // Batch mode and selection state
   const {
@@ -234,36 +274,48 @@ export function GamePoster({
         <div
           className={cn(
             'rounded-lg shadow-md',
-            'transition-all duration-300 ease-in-out',
+            // `transition-shadow`, not `transition-all`: this frame is the element that carries
+            // the fluid `width`, so a resize rewrites it on every mouse move, and
+            // `transition-all` tweens `width` too — the card then trails the (untweened)
+            // wrapper around it and the poster visibly breathes while the window is dragged.
+            // The hover/selection ring is a box-shadow, so this still animates it.
+            'transition-shadow duration-300 ease-in-out',
             isSelected
               ? 'ring-2 ring-primary'
               : 'ring-0 ring-border group-hover:ring-2 group-hover:ring-primary',
             'relative overflow-hidden group'
           )}
+          style={fluidWidthStyle}
         >
           <HoverCardAnimation>
             <GameImage
               draggable="false"
               gameId={gameId}
-              type="cover"
+              type={isWide ? 'wideCover' : 'cover'}
+              forceSmartCrop={isWide}
               blur={nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImage}
               initialMask={true}
-              blurType="poster"
+              blurType={isWide ? 'bigposter' : 'poster'}
               alt={gameId}
-              className={cn(
-                'w-[148px] aspect-[2/3] cursor-pointer select-none object-cover rounded-lg',
-                className
-              )}
+              className={posterImageClassName}
               fallback={
-                <div
-                  className={cn(
-                    'w-[148px] aspect-[2/3] cursor-pointer object-cover flex items-center justify-center bg-muted/50',
-                    className
-                  )}
-                  onClick={() => navigateToGame(navigate, gameId, groupId || 'all')}
-                >
-                  <div className="p-1 font-bold truncate select-none">{gameName}</div>
-                </div>
+                isWide ? (
+                  // Mirror BigGamePoster: wide cover -> background -> plain title block
+                  <GameImage
+                    draggable="false"
+                    gameId={gameId}
+                    type="background"
+                    forceSmartCrop
+                    blur={nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImage}
+                    initialMask={true}
+                    blurType="bigposter"
+                    alt={gameId}
+                    className={posterImageClassName}
+                    fallback={posterTitleFallback}
+                  />
+                ) : (
+                  posterTitleFallback
+                )
               }
             />
           </HoverCardAnimation>
@@ -328,7 +380,12 @@ export function GamePoster({
           </div>
         </div>
 
-        <div className="text-xs text-foreground truncate cursor-pointer select-none hover:underline w-[148px] text-center decoration-foreground">
+        <div
+          className={cn(
+            'text-xs text-foreground truncate cursor-pointer select-none hover:underline text-center decoration-foreground',
+            widthClass
+          )}
+        >
           {nsfw && nsfwBlurLevel >= NSFWBlurLevel.BlurImageAndTitle ? (
             <>
               <span className="block group-hover:hidden truncate">{obfuscatedName}</span>
@@ -343,9 +400,9 @@ export function GamePoster({
   )
 
   return (
-    <div ref={ref_} className="relative overflow-visible select-none">
+    <div ref={ref_} className="relative overflow-visible select-none" style={fluidWidthStyle}>
       {dragging ? (
-        <Preview title={gameData?.name ?? ''} transparentBackground={true} />
+        <Preview title={gameData?.name ?? ''} transparentBackground={true} shape={shape} />
       ) : disableContextMenu ? (
         posterBody
       ) : (
@@ -404,7 +461,10 @@ export function GamePoster({
         />
       )}
       {previewState.type === 'preview'
-        ? createPortal(<Preview title={gameData?.name ?? ''} />, previewState.container)
+        ? createPortal(
+            <Preview title={gameData?.name ?? ''} shape={shape} />,
+            previewState.container
+          )
         : null}
     </div>
   )
