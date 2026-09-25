@@ -22,6 +22,7 @@ import {
   BANGUMI_REDIRECT_URI,
   handleBangumiOAuthCallback
 } from './features/scraper/services/bangumiAuth'
+import { TagLexiconManager } from './features/tagLexicon'
 import {
   checkPortableMode,
   initI18n,
@@ -376,6 +377,10 @@ app.on('window-all-closed', () => {
 
 // Add cleanup logic before application exit
 app.on('before-quit', async () => {
+  // Flush whatever the tag lexicon still holds in its persist debounce window. Synchronous on
+  // purpose: Electron does not await this handler, so an async write could be cut off mid-flight.
+  TagLexiconManager.peekInstance()?.flushSync()
+
   // Clean up PowerShell instance
   cleanupPowerShell()
   await nativeCleanup()

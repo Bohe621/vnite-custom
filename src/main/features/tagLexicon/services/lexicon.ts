@@ -649,6 +649,14 @@ export class TagLexiconManager {
     return TagLexiconManager.instance
   }
 
+  /**
+   * 已经建好的实例，**不会**为了取它而新建 —— 退出时的收尾落盘不该顺带触发构造
+   * （那要读盘、rebuild、起 watcher）。没建过就说明内存里不存在未落盘的改动。
+   */
+  static peekInstance(): TagLexiconManager | null {
+    return TagLexiconManager.instance
+  }
+
   getPath(): string {
     return this.filePath
   }
@@ -782,6 +790,28 @@ export class TagLexiconManager {
       this.persistTimer = null
       this.persist().catch((error) => log.error('[TagLexicon] Deferred persist failed:', error))
     }, 250)
+  }
+
+  /**
+   * 退出前的最后一次落盘，**同步**执行 —— 把还压在防抖窗口里、尚未写盘的改动补上。
+   *
+   * 为什么必须同步：`before-quit` 里的异步操作不会被 Electron 等待，进程可能在 `writeFile`
+   * 落地前就退出，那样挂了 flush 也等于没挂。
+   * 只有存在待落盘改动时才写（`persistTimer` 非空 ⇔ 有未落盘的变更），免得每次退出都白写一遍。
+   * 极端情况下会与一次进行中的异步写重叠（那次写的是旧快照），最坏退化成「没 flush」的结果，
+   * 不会更差：丢的都是源:id 幂等的新铸实体，下次扫描补得回来。
+   */
+  flushSync(): void {
+    if (!this.persistTimer) return
+    clearTimeout(this.persistTimer)
+    this.persistTimer = null
+    try {
+      fse.ensureDirSync(path.dirname(this.filePath))
+      fse.writeFileSync(this.filePath, this.serialize(), 'utf-8')
+      this.lastWriteAt = Date.now()
+    } catch (error) {
+      log.error('[TagLexicon] Final flush failed:', error)
+    }
   }
 
   /**
