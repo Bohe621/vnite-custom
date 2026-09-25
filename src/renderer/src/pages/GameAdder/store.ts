@@ -1,6 +1,7 @@
 import i18next from 'i18next'
 import { toast } from 'sonner'
 import { create } from 'zustand'
+import { GameBackgroundCandidate } from '@appTypes/utils'
 import { useConfigStore } from '~/stores'
 
 export type DataSource = 'vndb' | 'igdb' | 'steam' | 'bangumi' | 'ymgal' | 'dlsite' | string
@@ -31,8 +32,8 @@ interface GameAdderState {
   setGameList: (gameList: GameList) => void
   dataSourceId: string
   setDataSourceId: (dataSourceId: string) => void
-  backgroundList: string[]
-  setBackgroundList: (backgroundList: string[]) => void
+  backgroundList: GameBackgroundCandidate[]
+  setBackgroundList: (backgroundList: GameBackgroundCandidate[]) => void
   backgroundUrl: string
   setBackgroundUrl: (backgroundUrl: string) => void
   enableUpscale: boolean

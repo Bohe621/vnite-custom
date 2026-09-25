@@ -19,6 +19,9 @@
     "backgrounds": {
       "title": "Background Image",
       "noImages": "No images",
+      "previousPage": "Previous",
+      "nextPage": "Next",
+      "pageIndicator": "Page {{current}} of {{total}}",
       "notifications": {
         "loading": "Getting images…",
         "success": "Images retrieved successfully",

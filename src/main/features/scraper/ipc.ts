@@ -58,6 +58,14 @@ export function setupScraperIPC(): void {
     }
   )
 
+  // 汇总所有源的背景图（带来源标记），供添加游戏时挑选。
+  ipcManager.handle(
+    'scraper:get-all-game-backgrounds',
+    async (_, dataSource: string, identifier: ScraperIdentifier, gameName: string) => {
+      return await scraperManager.getAllGameBackgrounds(dataSource, identifier, gameName)
+    }
+  )
+
   ipcManager.handle(
     'scraper:get-game-wide-covers',
     async (_, dataSource: string, identifier: ScraperIdentifier) => {

@@ -3,6 +3,7 @@ import {
   GameList,
   GameMetadata,
   ScraperIdentifier,
+  GameBackgroundCandidate,
   GameDescriptionList,
   GameTagsList,
   GameExtraInfoList,
@@ -162,6 +163,72 @@ export class ScraperManager {
       // Return an empty array on error, preventing interruptions
       return []
     }
+  }
+
+  /**
+   * 从**所有**能出背景图的源汇总候选，并给每张图标上来源。
+   *
+   * 当前数据源按精确 identifier 查（匹配最可靠 → 排最前，作为默认选中）；其余源只能拿游戏名去搜，
+   * 因为此刻除了名字我们对这个游戏一无所知 —— 而按名字搜是可能匹配到别的游戏的。这正是每张图
+   * 都必须带来源标记的原因：错配要能被看见，而不是被静默混进来。
+   *
+   * 单个源失败或超时只丢它自己（没配 key 的源必然失败），不影响其余。
+   */
+  public async getAllGameBackgrounds(
+    dataSource: string,
+    identifier: ScraperIdentifier,
+    gameName: string
+  ): Promise<GameBackgroundCandidate[]> {
+    // 总预算 + 小批并发 —— 两条都是实测逼出来的（2026-09-25）：
+    // 把 9 个源一次性并发出去，它们会**互相拖慢到全体超时**（本机经代理），连平时 400ms 的
+    // vndb 都拿不到；而单独调 vndb 只要 441ms。慢源（erogamescape / google 实测 20s+）不该
+    // 占着快源的名额，所以分批发、并且只花剩余预算。
+    const BUDGET_MS = 5000
+    const BATCH_SIZE = 4
+    const startedAt = Date.now()
+
+    const providers = this.getAllProviders().filter((provider) => !!provider.getGameBackgrounds)
+
+    // 当前源排最前：它是唯一按精确 id 查的（匹配最可靠），也最先发出去。
+    providers.sort((a, b) => (a.id === dataSource ? -1 : b.id === dataSource ? 1 : 0))
+
+    const seen = new Set<string>()
+    const merged: GameBackgroundCandidate[] = []
+
+    const runOne = async (provider: ScraperProvider): Promise<GameBackgroundCandidate[]> => {
+      const target: ScraperIdentifier =
+        provider.id === dataSource ? identifier : { type: 'name', value: gameName }
+      // 超时按剩余预算递减，保证总时长不超预算；下限 500ms，免得轮到后面的源时一点机会都没有。
+      const urls = await withTimeout(
+        provider.getGameBackgrounds!(target),
+        Math.max(500, BUDGET_MS - (Date.now() - startedAt)),
+        `backgrounds:${provider.id}`
+      )
+      return urls.map((url) => ({ url, source: provider.id, sourceName: provider.name }))
+    }
+
+    for (let i = 0; i < providers.length; i += BATCH_SIZE) {
+      if (Date.now() - startedAt >= BUDGET_MS) break
+      const settled = await Promise.allSettled(providers.slice(i, i + BATCH_SIZE).map(runOne))
+      for (const result of settled) {
+        // 单个源挂掉（没配 key 的源必然失败）不该拖垮整批；同 url 去重，保留先出现的来源。
+        if (result.status === 'rejected') {
+          log.warn(`[Scraper] Backgrounds unavailable from a provider: ${result.reason}`)
+          continue
+        }
+        for (const candidate of result.value) {
+          if (seen.has(candidate.url)) continue
+          seen.add(candidate.url)
+          merged.push(candidate)
+        }
+      }
+    }
+
+    log.info(
+      `[Scraper] Gathered ${merged.length} background candidates from ${providers.length} providers ` +
+        `in ${Date.now() - startedAt}ms`
+    )
+    return merged
   }
 
   public async getGameWideCovers(

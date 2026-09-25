@@ -267,3 +267,18 @@ export interface BangumiTokenResult {
  * the IPC boundary, and shared here so both processes recognize the same marker.
  */
 export const BANGUMI_AUTH_REQUIRED = 'BANGUMI_AUTH_REQUIRED'
+
+/**
+ * 一张背景图候选，连同它是哪个源给的。
+ *
+ * 添加游戏时会把**所有能出背景图的源**都问一遍汇总展示：当前数据源按精确 id 查，别的源
+ * 只能拿游戏名去搜 —— 而按名字搜是可能匹配到别的游戏的。所以每张图都必须带上来源标记，
+ * 让用户在选图时一眼看出「这张不是这个游戏的」，而不是被静默混进来。
+ */
+export interface GameBackgroundCandidate {
+  url: string
+  /** Provider id，如 `vndb`。 */
+  source: string
+  /** Provider 的展示名，如 `VNDB`。 */
+  sourceName: string
+}

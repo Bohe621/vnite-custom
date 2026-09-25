@@ -61,6 +61,7 @@ import {
 import {
   BangumiTokenResult,
   BangumiTokenStatus,
+  GameBackgroundCandidate,
   GameDescriptionList,
   GameDevelopersList,
   GameExtraInfoList,
@@ -323,6 +324,11 @@ type MainIpcEvents =
         dataSource: string,
         identifier: ScraperIdentifier
       ) => string[]
+      'scraper:get-all-game-backgrounds': (
+        dataSource: string,
+        identifier: ScraperIdentifier,
+        gameName: string
+      ) => GameBackgroundCandidate[]
       'scraper:get-game-wide-covers': (
         dataSource: string,
         identifier: ScraperIdentifier

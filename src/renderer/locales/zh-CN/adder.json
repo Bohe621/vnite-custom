@@ -19,6 +19,9 @@
     "backgrounds": {
       "title": "背景图片",
       "noImages": "暂无图片",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
+      "pageIndicator": "第 {{current}} / {{total}} 页",
       "notifications": {
         "loading": "获取图片中…",
         "success": "获取图片成功",
