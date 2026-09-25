@@ -466,6 +466,33 @@
       "findIdInName": "Detect DLsite ID from Folder Name",
       "findIdInNameDescription": "When enabled, the app will prioritize extracting the DLsite work ID (e.g., RJ123456) from the folder name to fetch game information."
     },
+    "bangumi": {
+      "title": "Bangumi Settings",
+      "token": "Access Token",
+      "tokenPlaceholder": "Paste access token",
+      "tokenSource": "How to get a token",
+      "getToken": "Get token",
+      "getTokenDescription": "Opens the Bangumi token page in your browser (bgm.tv sign-in required); the token lasts about a year. Bangumi only returns adult entries to signed-in requests — search still lists them, but fetching details returns 404, which makes scanning and fixing fail.",
+      "oauthLogin": "Sign in with Bangumi",
+      "oauthDescription": "You can also sign in through Bangumi's official authorization page; the token renews itself before it expires.",
+      "status": {
+        "connected": "Connected as {{name}}",
+        "connectedUnknown": "Access token configured",
+        "notConfigured": "No access token configured"
+      },
+      "actions": {
+        "save": "Save",
+        "clear": "Clear token"
+      },
+      "notifications": {
+        "saved": "Token saved, connected as {{name}}",
+        "empty": "Enter an access token first",
+        "invalid": "The token is invalid or expired, please get a new one",
+        "oauthUnavailable": "This build ships no Bangumi client credentials, so one-click sign-in is unavailable",
+        "oauthStarted": "Authorization page opened in your browser",
+        "cleared": "Access token cleared"
+      }
+    },
     "dataSources": {
       "steam": "Steam",
       "vndb": "VNDB",

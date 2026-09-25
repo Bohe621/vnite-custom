@@ -321,6 +321,20 @@ export interface configLocalDocs {
     captureFullscreen: string
   }
   game: {
+    // Bangumi credentials. Kept in the local (unsynced) config because the token unlocks the
+    // user's own NSFW-visible content and must never be pushed to the cloud.
+    scraper: {
+      bangumi: {
+        /** Personal access token, or the access token obtained through OAuth. Empty when unconfigured. */
+        accessToken: string
+        /** Only set by the OAuth flow; empty for a manually pasted personal token. */
+        refreshToken: string
+        /** Unix ms. 0 means "no known expiry" — personal tokens last about a year. */
+        expiresAt: number
+        /** Bangumi username resolved from /v0/me, so the settings page can show who is connected. */
+        userName: string
+      }
+    }
     launcher: {
       presets: LauncherPreset[]
     }
@@ -631,6 +645,14 @@ export const DEFAULT_CONFIG_LOCAL_VALUES: Readonly<configLocalDocs> = {
     captureFullscreen: ''
   },
   game: {
+    scraper: {
+      bangumi: {
+        accessToken: '',
+        refreshToken: '',
+        expiresAt: 0,
+        userName: ''
+      }
+    },
     launcher: {
       presets: [] as LauncherPreset[]
     },

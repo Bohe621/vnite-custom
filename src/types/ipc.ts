@@ -59,6 +59,8 @@ import {
   PluginUpdateInfo
 } from './plugin'
 import {
+  BangumiTokenResult,
+  BangumiTokenStatus,
   GameDescriptionList,
   GameDevelopersList,
   GameExtraInfoList,
@@ -306,6 +308,11 @@ type MainIpcEvents =
       'toolbox:refresh-tool-icon': (toolId: string, exePath: string) => void
       'toolbox:remove-tool': (toolId: string) => void
 
+      'scraper:bangumi-token-status': () => BangumiTokenStatus
+      'scraper:bangumi-set-token': (token: string) => BangumiTokenResult
+      'scraper:bangumi-clear-token': () => void
+      'scraper:bangumi-open-token-page': () => void
+      'scraper:bangumi-oauth-start': () => BangumiTokenResult
       'scraper:search-games': (dataSource: string, gameName: string) => GameList
       'scraper:check-game-exists': (dataSource: string, identifier: ScraperIdentifier) => boolean
       'scraper:get-game-metadata': (

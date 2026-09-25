@@ -466,6 +466,33 @@
       "findIdInName": "识别文件夹名中的DLsite ID",
       "findIdInNameDescription": "启用后，会优先从文件夹名中提取DLsite作品ID（如 RJ123456）以获取游戏信息。"
     },
+    "bangumi": {
+      "title": "Bangumi 设置",
+      "token": "访问令牌",
+      "tokenPlaceholder": "粘贴访问令牌",
+      "tokenSource": "令牌获取方式",
+      "getToken": "获取令牌",
+      "getTokenDescription": "在浏览器中打开 Bangumi 令牌页面（需已登录 bgm.tv），创建后复制回来，有效期约一年。Bangumi 要求登录后才能读取成人向条目：搜索仍会列出它们，但获取详情会返回 404，导致扫描与修复失败。",
+      "oauthLogin": "使用 Bangumi 账号登录",
+      "oauthDescription": "也可以跳转到 Bangumi 官方授权页登录，令牌会在过期前自动续期。",
+      "status": {
+        "connected": "已连接：{{name}}",
+        "connectedUnknown": "已配置访问令牌",
+        "notConfigured": "未配置访问令牌"
+      },
+      "actions": {
+        "save": "保存",
+        "clear": "清除令牌"
+      },
+      "notifications": {
+        "saved": "令牌已保存，已连接：{{name}}",
+        "empty": "请输入访问令牌",
+        "invalid": "令牌无效或已过期，请重新获取",
+        "oauthUnavailable": "当前版本未内置 Bangumi 应用凭证，无法使用一键登录",
+        "oauthStarted": "已在浏览器中打开授权页面",
+        "cleared": "访问令牌已清除"
+      }
+    },
     "dataSources": {
       "steam": "Steam",
       "vndb": "VNDB",

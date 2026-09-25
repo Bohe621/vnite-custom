@@ -5,6 +5,7 @@ import { ipcManager } from '~/app/ipc'
 import { ConfigItem } from '~/components/form/ConfigItem'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { cn } from '~/utils'
+import { BangumiTokenSettings } from './BangumiTokenSettings'
 
 export function Scraper(): React.JSX.Element {
   const { t } = useTranslation('config')
@@ -126,6 +127,9 @@ export function Scraper(): React.JSX.Element {
               />
             </div>
           </div>
+
+          {/* Bangumi Settings */}
+          <BangumiTokenSettings />
         </div>
       </CardContent>
     </Card>

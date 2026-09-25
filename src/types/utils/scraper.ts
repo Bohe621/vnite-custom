@@ -236,3 +236,34 @@ export interface BatchUpdateGameMetadataProgress {
   current: number
   total: number
 }
+
+/**
+ * Bangumi requires an authenticated request to read NSFW-restricted subjects: the search
+ * endpoint still lists them, but `v0/subjects/{id}` answers 404 for anonymous callers, so the
+ * library cannot scrape any成人向 entry until a token is configured.
+ */
+export interface BangumiTokenStatus {
+  configured: boolean
+  userName: string
+  /** Unix ms. 0 means the token has no published expiry, which is how personal tokens behave. */
+  expiresAt: number
+  /** `oauth` when a refresh token is held, `manual` for a pasted personal access token. */
+  mode: 'none' | 'manual' | 'oauth'
+  /** True only when this build ships OAuth client credentials, i.e. one-click login can work. */
+  oauthAvailable: boolean
+}
+
+export interface BangumiTokenResult {
+  success: boolean
+  userName?: string
+  /** Machine-readable failure code; the renderer maps it to a localized message. */
+  error?: 'empty' | 'invalid' | 'oauth-unavailable'
+}
+
+/**
+ * Prefix of the error raised when Bangumi answers 404 to an anonymous caller. The subject is far
+ * more likely NSFW-restricted than removed, so the UI turns this into "configure a token" rather
+ * than an opaque failure. Carried as a message prefix because an Error subclass does not survive
+ * the IPC boundary, and shared here so both processes recognize the same marker.
+ */
+export const BANGUMI_AUTH_REQUIRED = 'BANGUMI_AUTH_REQUIRED'

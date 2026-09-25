@@ -6,6 +6,9 @@ interface ImportMetaEnv {
   readonly VITE_IGDB_API_KEY: string
   readonly VITE_STEAM_API_KEY: string
   readonly VITE_BANGUMI_API_KEY: string
+  /** OAuth client credentials of the registered Bangumi application. Absent in most builds. */
+  readonly VITE_BANGUMI_CLIENT_ID: string
+  readonly VITE_BANGUMI_CLIENT_SECRET: string
 
   readonly VITE_AUTHENTIK_SERVER_URL: string
   readonly VITE_AUTHENTIK_CLIENT_ID: string

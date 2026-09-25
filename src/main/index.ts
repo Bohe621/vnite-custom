@@ -19,6 +19,10 @@ import { AuthManager, handleAuthCallback } from './features/account'
 import { GameScannerManager } from './features/adder'
 import { setupScraper } from './features/scraper'
 import {
+  BANGUMI_REDIRECT_URI,
+  handleBangumiOAuthCallback
+} from './features/scraper/services/bangumiAuth'
+import {
   checkPortableMode,
   initI18n,
   portableStore,
@@ -265,6 +269,12 @@ app.whenReady().then(async () => {
     if (authUrl) {
       // Processing auth callback URL
       handleAuthCallback(authUrl)
+    }
+    // Bangumi sign-in callback. Same single-instance caveat as the auth callback above: a deep
+    // link that cold-starts the app is not picked up here.
+    const bangumiCallbackUrl = commandLine.find((arg) => arg.startsWith(BANGUMI_REDIRECT_URI))
+    if (bangumiCallbackUrl) {
+      handleBangumiOAuthCallback(bangumiCallbackUrl)
     }
   })
 

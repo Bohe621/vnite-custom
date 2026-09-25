@@ -13,7 +13,7 @@ export type ConfigTab =
   | 'network'
   | 'about'
 
-export type ConfigSection = 'toolbox' | 'launcher-presets'
+export type ConfigSection = 'toolbox' | 'launcher-presets' | 'bangumi'
 
 interface ConfigTabStore {
   lastConfigTab: ConfigTab
