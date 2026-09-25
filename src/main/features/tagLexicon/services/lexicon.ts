@@ -630,6 +630,8 @@ export class TagLexiconManager {
   private notifiedConflictCount = -1
   /** `rebuild()` 里 prune 掉过冲突（纯内存），启动/重载后需要补一次落盘 */
   private conflictsPruned = false
+  /** 扫批/批量铸造时的落盘防抖：连续多次 ensureTags 只真正写一次盘（见 schedulePersist） */
+  private persistTimer: ReturnType<typeof setTimeout> | null = null
 
   private constructor(filePath: string) {
     this.filePath = filePath
@@ -767,6 +769,19 @@ export class TagLexiconManager {
       log.error('[TagLexicon] Failed to save lexicon:', error)
       throw error
     }
+  }
+
+  /**
+   * 防抖落盘：连续多次写（整个扫描任务 N 个游戏 × 每 game 一次 ensureTags）只真正写一次盘。
+   * 内存里的 data 即时更新，读路径不依赖落盘，所以延后写盘对一致性无影响；
+   * 崩溃最坏丢失最后 250ms 的写入，那些是新铸实体（源:id 幂等可重铸），下次扫描会补回。
+   */
+  private schedulePersist(): void {
+    if (this.persistTimer) return
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null
+      this.persist().catch((error) => log.error('[TagLexicon] Deferred persist failed:', error))
+    }, 250)
   }
 
   /**
@@ -1006,6 +1021,42 @@ export class TagLexiconManager {
     }
   }
 
+  /**
+   * 增量刷新**单条**实体的 `effective` 与三个索引（不动其余条目）。
+   *
+   * 铸造 / 补线索是高频「纯增」操作（一次扫描几十上百个标签）。走它就能避免每批次都
+   * 全量重建 3000+ 实体的索引 —— 扫描链路因此 0 次全量 rebuild。读路径
+   * （display / displayMap / getState / countByLanguage）全部读 `this.effective`，
+   * 只要 effective 对触碰到的 key 是新的，读就一致，无需整表 rebuild。
+   *
+   * ⚠️ 只适用于「新增实体 / 追加线索」（纯增）。**改名 / 合并 / 改挂 / 删除**会令旧的
+   * nameIndex/srcIndex 项指向错乱，那几个低频操作仍走整表 `rebuild()`，不要在这里处理。
+   */
+  private reindexOne(key: string): void {
+    const record = this.data.tags[key]
+    if (!record) {
+      this.effective.delete(key)
+      return
+    }
+    const builtinRecord = getBuiltinTags().get(key)
+    // 与 rebuild() 第一段一致：把内置记录包成 EffectiveTag 形状，好喂给 isUserTouched（它要 EffectiveTag）
+    const builtin: EffectiveTag | undefined = builtinRecord
+      ? {
+          key,
+          names: { ...builtinRecord.names },
+          src: { ...(builtinRecord.src ?? {}) },
+          ids: { ...(builtinRecord.ids ?? {}) },
+          origin: 'builtin'
+        }
+      : undefined
+    const names = unionNames(record.fetchedNames, unionNames(builtinRecord?.names, record.names))
+    const src = unionStringMap(builtinRecord?.src, record.src)
+    const ids = unionStringMap(builtinRecord?.ids, record.ids)
+    const origin = isUserTouched(builtin, record) ? 'user' : 'builtin'
+    this.effective.set(key, { key, names, src, ids, origin, legacyNames: builtinRecord?.names })
+    this.indexTag(key, names, src, ids, builtinRecord?.names)
+  }
+
   /** 跟随重定向链，带环保护 */
   private followRedirect(key: string): string {
     let current = key
@@ -1090,10 +1141,12 @@ export class TagLexiconManager {
   }
 
   /**
-   * 批量解析并保证存在，整批只落盘、只重建一次索引。
+   * 批量解析并保证存在：逐条**增量**维护索引、整批只防抖落盘一次，**不做全量 rebuild**。
    *
-   * 逐个调用 ensureTag 时每次都要重写文件并重建 3000+ 条实体的索引，
-   * 一个游戏几十个标签会明显拖慢扫描，所以抓取链路一律走这个批量入口。
+   * 逐个调用 ensureTag 时每次都要重写文件并全量重建 3000+ 条实体的索引；
+   * 而且抓取链路是「每个游戏调一次本方法」，于是 50 个游戏就是 50 次全量 rebuild。
+   * 所以这里改为：mint/rememberSource 内部增量维护 effective + 三索引（reindexOne），
+   * 本方法末尾只 schedulePersist（防抖）+ 通知冲突变化 —— 整个扫描任务 0 次全量 rebuild。
    *
    * `idByRaw` 是「原始串 → 源内稳定 id」的映射（只含**有**稳定 id 的标签，见
    * `GameMetadata.tagIds`）。它对**文本随语言变**的源是必需的：DLsite 中文站返回
@@ -1116,8 +1169,10 @@ export class TagLexiconManager {
       keys.push(result.key)
     }
     if (mutated) {
-      await this.persist()
-      this.rebuild()
+      // 不再每批全量 rebuild：铸造/补线索已在 mint/rememberSource 里**增量**维护了
+      // effective + 三个索引（reindexOne），这里只需防抖落盘 + 通知冲突数变化。
+      // 于是「扫 N 个游戏」全程 0 次全量 rebuild（原来是 N 次），落盘也只写一次。
+      this.schedulePersist()
       this.notifyConflictChange()
     }
     return keys
@@ -1209,6 +1264,9 @@ export class TagLexiconManager {
     // 新铸的这条可能在同一个语言下已经与别的实体同名（`兽耳` / `角色扮演` 都属于这种）。
     // 这里只**记录**，不合并 —— 是不是同一个概念要人来判断。
     this.recordDuplicateConflict(key, namespace, raw, target, id)
+    // 增量刷新索引（必须在 recordDuplicateConflict **之后**：那时 nameIndex 里还没有本条，
+    // 才不会把「和自己撞名」当成冲突）。保证后续同批/同扫描里的 resolve/conflict 能看到这条。
+    this.reindexOne(key)
 
     log.info(`[TagLexicon] Minted tag "${key}" from ${namespace}:${raw}`)
     return { key, mutated: true }
@@ -1334,7 +1392,11 @@ export class TagLexiconManager {
 
     // 一条线索都没有的记录别留在文件里（判定要连已有的 src/ids/fetchedNames 一起看，
     // 只看 `changed` 会误删「只有线索、没有译名」的记录，详见 isEmptyRecord）
-    if (isEmptyRecord(record)) delete this.data.tags[key]
+    const deleted = isEmptyRecord(record)
+    if (deleted) delete this.data.tags[key]
+    // 只在真的产生变动（或被删）时增量刷新；重复命中的「无新线索」走这条跳过，
+    // 避免对全库重扫时每个已有标签都白刷一次索引。
+    if (changed || deleted) this.reindexOne(key)
     return changed
   }
 
