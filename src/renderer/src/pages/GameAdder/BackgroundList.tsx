@@ -163,39 +163,39 @@ export function BackgroundList(): React.JSX.Element {
     <div className={cn('w-[50vw] h-[80vh] p-3')}>
       <div className={cn('flex flex-col w-full h-full gap-3')}>
         <div className={cn('font-bold')}>{t('gameAdder.backgrounds.title')}</div>
-        <div className="w-full h-full">
-          <div className={cn('scrollbar-base overflow-auto pr-3')}>
-            <div className={cn('grid grid-cols-2 gap-3')}>
-              {pageItems.length !== 0 ? (
-                pageItems.map((candidate) => (
-                  <div
-                    key={candidate.url}
-                    data-image={candidate.url}
-                    onClick={() => {
-                      setBackgroundUrl(candidate.url)
-                    }}
+        {/* flex-1 + min-h-0 才能让滚动区吃掉剩余高度；只用 h-full 的话网格会把下面的
+            分页控件和「确定」按钮一起顶出视口。 */}
+        <div className={cn('scrollbar-base overflow-auto flex-1 min-h-0 pr-3')}>
+          <div className={cn('grid grid-cols-2 gap-3')}>
+            {pageItems.length !== 0 ? (
+              pageItems.map((candidate) => (
+                <div
+                  key={candidate.url}
+                  data-image={candidate.url}
+                  onClick={() => {
+                    setBackgroundUrl(candidate.url)
+                  }}
+                  className={cn(
+                    'relative cursor-pointer p-3 bg-muted text-muted-foreground rounded-lg',
+                    candidate.url === backgroundUrl
+                      ? 'bg-accent text-accent-foreground'
+                      : 'hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  {/* 来源标记：非当前源是按游戏名搜来的，可能匹配到别的游戏，必须让用户看得见。 */}
+                  <span
                     className={cn(
-                      'relative cursor-pointer p-3 bg-muted text-muted-foreground rounded-lg',
-                      candidate.url === backgroundUrl
-                        ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-accent hover:text-accent-foreground'
+                      'absolute top-2 right-2 rounded bg-black/65 px-2 py-0.5 text-xs text-white'
                     )}
                   >
-                    {/* 来源标记：非当前源是按游戏名搜来的，可能匹配到别的游戏，必须让用户看得见。 */}
-                    <span
-                      className={cn(
-                        'absolute top-2 right-2 rounded bg-black/65 px-2 py-0.5 text-xs text-white'
-                      )}
-                    >
-                      {candidate.sourceName}
-                    </span>
-                    <img src={candidate.url} alt={candidate.sourceName} className="w-full h-auto" />
-                  </div>
-                ))
-              ) : (
-                <div>{t('gameAdder.backgrounds.noImages')}</div>
-              )}
-            </div>
+                    {candidate.sourceName}
+                  </span>
+                  <img src={candidate.url} alt={candidate.sourceName} className="w-full h-auto" />
+                </div>
+              ))
+            ) : (
+              <div>{t('gameAdder.backgrounds.noImages')}</div>
+            )}
           </div>
         </div>
         {pageCount > 1 && (
