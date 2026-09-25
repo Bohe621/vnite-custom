@@ -13,7 +13,8 @@
         "developers": "Developers"
       },
       "unknown": "Unknown",
-      "selected": "Selected game: {{name}}"
+      "selected": "Selected game: {{name}}",
+      "resizeColumn": "Drag to resize column"
     },
     "backgrounds": {
       "title": "Background Image",

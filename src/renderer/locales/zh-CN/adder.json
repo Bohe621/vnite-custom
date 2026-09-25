@@ -13,7 +13,8 @@
         "developers": "开发商"
       },
       "unknown": "未知",
-      "selected": "已选择游戏: {{name}}"
+      "selected": "已选择游戏: {{name}}",
+      "resizeColumn": "拖动调整列宽"
     },
     "backgrounds": {
       "title": "背景图片",
