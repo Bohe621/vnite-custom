@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
-import { OverallScanProgress } from '@appTypes/utils'
+import { BANGUMI_AUTH_REQUIRED, OverallScanProgress } from '@appTypes/utils'
 import { generateUUID } from '@appUtils'
 import { useConfigLocalStore } from '~/stores'
+import { useConfigTabStore } from '~/pages/Config/store'
 import i18next from 'i18next'
 import { ipcManager } from '~/app/ipc'
 
@@ -74,6 +75,23 @@ interface GameScannerStore {
 }
 
 const t = (key: string): string => i18next.t(key, { ns: 'scanner' })
+
+/** Send the user to Settings → Scraper, scrolled to the Bangumi block. */
+function openBangumiSettings(): void {
+  const { setLastConfigTab, setPendingSection } = useConfigTabStore.getState()
+  setLastConfigTab('scraper')
+  setPendingSection('bangumi')
+  window.location.hash = '#/config'
+}
+
+/**
+ * Only the loading placeholder carries an id, so it can be replaced by the result. Result toasts
+ * are created fresh instead of reusing one id: sonner updates a toast by **shallow merge**, so an
+ * `action` left over from an earlier toast with the same id sticks to every later one — the
+ * "open settings" button then showed up on ordinary "fix failed" messages as well. (`action:
+ * undefined` does not clear it, sonner ignores the key.)
+ */
+const FIX_LOADING_TOAST_ID = 'fix-folder-loading'
 
 export const useGameScannerStore = create<GameScannerStore>((set, get) => ({
   // Initial State
@@ -327,18 +345,29 @@ export const useGameScannerStore = create<GameScannerStore>((set, get) => ({
   fixFailedFolder: async (folderPath, gameId, dataSource): Promise<void> => {
     try {
       toast.loading(t('notifications.fixAttempt'), {
-        id: 'fix-folder'
+        id: FIX_LOADING_TOAST_ID
       })
       await ipcManager.invoke('scanner:fix-folder', folderPath, gameId, dataSource)
 
-      toast.success(t('notifications.fixSuccess'), {
-        id: 'fix-folder'
-      })
+      toast.dismiss(FIX_LOADING_TOAST_ID)
+      toast.success(t('notifications.fixSuccess'))
     } catch (error) {
       console.error(`${t('errors.fixFolder')}`, error)
-      toast.error(t('notifications.fixError'), {
-        id: 'fix-folder'
-      })
+      toast.dismiss(FIX_LOADING_TOAST_ID)
+
+      // Bangumi answers 404 for NSFW-restricted subjects while the request is anonymous, so the
+      // generic "fix failed" reads as a bug. Name the cause and offer the settings shortcut.
+      if ((error as Error)?.message?.includes(BANGUMI_AUTH_REQUIRED)) {
+        toast.error(t('notifications.bangumiAuthRequired'), {
+          duration: 10000,
+          action: {
+            label: t('notifications.openBangumiSettings'),
+            onClick: openBangumiSettings
+          }
+        })
+      } else {
+        toast.error(t('notifications.fixError'))
+      }
       throw error
     }
   },

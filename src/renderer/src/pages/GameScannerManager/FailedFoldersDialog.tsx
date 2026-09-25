@@ -26,7 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameScannerStore } from './store'
-import { ScraperCapabilities } from '@appTypes/utils'
+import { ScraperCapabilities, BANGUMI_AUTH_REQUIRED } from '@appTypes/utils'
 import { ipcManager } from '~/app/ipc'
 import { useConfigLocalState } from '~/hooks'
 import { toast } from 'sonner'
@@ -109,6 +109,13 @@ export const FailedFoldersDialog: React.FC<FailedFoldersDialogProps> = ({ isOpen
 
   const failedFolders = getAllFailedFolders()
 
+  /**
+   * The scanner stores whatever the provider threw. For Bangumi that can be a 404 marker whose
+   * meaning is only obvious once translated, so swap it for the actionable sentence.
+   */
+  const displayError = (error: string): string =>
+    error.includes(BANGUMI_AUTH_REQUIRED) ? t('notifications.bangumiAuthRequired') : error
+
   const handleSelectFolder = (folder: {
     path: string
     name: string
@@ -160,7 +167,7 @@ export const FailedFoldersDialog: React.FC<FailedFoldersDialogProps> = ({ isOpen
                 <p className="font-medium">
                   {t('failedFolders.fixing', { name: selectedFolder.name })}
                 </p>
-                <p className="text-sm text-destructive">{selectedFolder.error}</p>
+                <p className="text-sm text-destructive">{displayError(selectedFolder.error)}</p>
               </div>
 
               <div className="grid grid-cols-[auto_1fr] gap-y-4 gap-x-4 items-center">
@@ -239,8 +246,10 @@ export const FailedFoldersDialog: React.FC<FailedFoldersDialogProps> = ({ isOpen
                     </TableCell>
                     <TableCell className="max-w-[10vw] overflow-hidden">
                       <Tooltip>
-                        <TooltipTrigger className="text-xs">{folder.error}</TooltipTrigger>
-                        <TooltipContent>{folder.error}</TooltipContent>
+                        <TooltipTrigger className="text-xs">
+                          {displayError(folder.error)}
+                        </TooltipTrigger>
+                        <TooltipContent>{displayError(folder.error)}</TooltipContent>
                       </Tooltip>
                     </TableCell>
                     <TableCell className="flex flex-row">

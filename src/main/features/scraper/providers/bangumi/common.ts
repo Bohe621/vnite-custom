@@ -1,6 +1,7 @@
-import { GameList, GameMetadata } from '@appTypes/utils'
+import { GameList, GameMetadata, BANGUMI_AUTH_REQUIRED } from '@appTypes/utils'
 import { BangumiSearchResult, BangumiSubject } from './types'
 import { getGameBackgroundsFromVNDB } from '../vndb/api'
+import { BANGUMI_USER_AGENT, getBangumiAccessToken } from '../../services/bangumiAuth'
 import i18next from 'i18next'
 import { net } from 'electron'
 import { METADATA_EXTRA_PREDEFINED_KEYS } from '@appTypes/models'
@@ -98,17 +99,27 @@ async function fetchBangumi<T>(
     url.searchParams.append(key, String(value))
   })
 
-  const apiKey = import.meta.env.VITE_BANGUMI_API_KEY || ''
+  // Resolution order (stored token → build-time key → anonymous) lives in bangumiAuth.
+  const accessToken = await getBangumiAccessToken()
 
   const response = await net.fetch(url.toString(), {
     headers: {
       Accept: 'application/json',
-      'User-Agent': 'ximu3/vnite/4.0.0-alpha.0 (https://github.com/ximu3/vnite)',
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+      'User-Agent': BANGUMI_USER_AGENT,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
     }
   })
 
   if (!response.ok) {
+    // Bangumi answers a plain 404 for NSFW-restricted subjects when the caller is anonymous,
+    // which is indistinguishable from a removed entry. Flag it so the UI can offer to configure
+    // a token instead of reporting an opaque failure.
+    if (response.status === 404 && !accessToken) {
+      throw new Error(
+        `${BANGUMI_AUTH_REQUIRED}: bangumi answered 404 for "${endpoint}" anonymously; the ` +
+          'entry may be NSFW-restricted and require an access token'
+      )
+    }
     throw new Error(`HTTP error! status: ${response.status}`)
   }
 
