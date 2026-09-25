@@ -262,7 +262,17 @@
       },
       "tags": {
         "empty": "No tags available",
-        "separator": "Separate tags with commas",
+        "dialog": {
+          "title": "Edit Tags",
+          "description": "Pick a tag from the library, or type a new one and press Enter to add; click the × on a tag to remove it.",
+          "addTag": "Add tag",
+          "searchPlaceholder": "Search the tag library…",
+          "searchHint": "Type a keyword to search the library, or press Enter to create a new tag",
+          "loading": "Searching…",
+          "noResults": "No matching tags",
+          "createTag": "Create new tag \"{{name}}\"",
+          "removeTag": "Remove tag {{name}}"
+        },
         "search": {
           "loading": "Searching for game tags…",
           "success": "Search successful",

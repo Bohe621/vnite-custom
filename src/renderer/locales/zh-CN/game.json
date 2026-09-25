@@ -262,7 +262,17 @@
       },
       "tags": {
         "empty": "暂无标签",
-        "separator": "标签之间使用逗号分隔",
+        "dialog": {
+          "title": "编辑标签",
+          "description": "从标签词库选择，或直接输入新标签回车添加；点标签右侧的 × 删除。",
+          "addTag": "添加标签",
+          "searchPlaceholder": "搜索词库标签…",
+          "searchHint": "输入关键词搜索词库，或直接回车创建新标签",
+          "loading": "搜索中…",
+          "noResults": "没有匹配的标签",
+          "createTag": "创建新标签「{{name}}」",
+          "removeTag": "删除标签 {{name}}"
+        },
         "search": {
           "loading": "正在搜索游戏标签…",
           "success": "搜索成功",
